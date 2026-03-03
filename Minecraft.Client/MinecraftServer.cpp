@@ -385,7 +385,7 @@ bool MinecraftServer::loadLevel(LevelStorageSource *storageSource, const wstring
 	ProgressRenderer *mcprogress = Minecraft::GetInstance()->progressRenderer;
 
 	// 4J TODO - free levels here if there are already some?
-    levels = ServerLevelArray(3);
+    levels = ServerLevelArray(4);
 
 	int gameTypeId = settings->getInt(L"gamemode", app.GetGameHostOption(eGameHostOption_GameType));//LevelSettings::GAMETYPE_SURVIVAL);
 	GameType *gameType = LevelSettings::validateGameType(gameTypeId);
@@ -458,6 +458,7 @@ bool MinecraftServer::loadLevel(LevelStorageSource *storageSource, const wstring
 		int dimension = 0;
 		if (i == 1) dimension = -1;
 		if (i == 2) dimension = 1;
+		if (i == 3) dimension = 2;
         if (i == 0)
 		{
 			levels[i] = new ServerLevel(this, storage, name, dimension, levelSettings);
@@ -706,6 +707,13 @@ bool MinecraftServer::loadLevel(LevelStorageSource *storageSource, const wstring
 
 	if( s_bServerHalted || !g_NetworkManager.IsInSession() ) return false;
 
+	if( levels[3]->isNew )
+	{
+		levels[3]->save(true, mcprogress);
+	}
+
+	if( s_bServerHalted || !g_NetworkManager.IsInSession() ) return false;
+
 	// 4J - added - immediately save newly created level, like single player game
 	// 4J Stu - We also want to immediately save the tutorial
 	if ( levels[0]->isNew )
@@ -718,7 +726,7 @@ bool MinecraftServer::loadLevel(LevelStorageSource *storageSource, const wstring
 
 	if( s_bServerHalted || !g_NetworkManager.IsInSession() ) return false;
 
-	if( levels[0]->isNew || levels[1]->isNew || levels[2]->isNew )
+	if( levels[0]->isNew || levels[1]->isNew || levels[2]->isNew || levels[3]->isNew )
 	{
 		levels[0]->saveToDisc(mcprogress, false);
 	}
@@ -1608,6 +1616,7 @@ ServerLevel *MinecraftServer::getLevel(int dimension)
 {
     if (dimension == -1) return levels[1];
 	else if (dimension == 1) return levels[2];
+	else if (dimension == 2) return levels[3];
     else return levels[0];
 }
 
@@ -1616,6 +1625,7 @@ void MinecraftServer::setLevel(int dimension, ServerLevel *level)
 {
     if (dimension == -1) levels[1] = level;
 	else if (dimension == 1) levels[2] = level;
+	else if (dimension == 2) levels[3] = level;
     else levels[0] = level;
 }
 

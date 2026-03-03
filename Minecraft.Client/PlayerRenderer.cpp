@@ -27,7 +27,7 @@ const unsigned int PlayerRenderer::s_nametagColors[MINECRAFT_NET_MAX_PLAYERS] =
 #endif
 };
 
-const wstring PlayerRenderer::MATERIAL_NAMES[5] = { L"cloth", L"chain", L"iron", L"diamond", L"gold" };
+const wstring PlayerRenderer::MATERIAL_NAMES[7] = { L"cloth", L"chain", L"iron", L"diamond", L"gold", L"zanite_layer", L"gravitite_layer" };
 
 PlayerRenderer::PlayerRenderer() : MobRenderer( new HumanoidModel(0), 0.5f )
 {

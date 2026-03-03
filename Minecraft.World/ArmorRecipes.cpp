@@ -48,30 +48,45 @@ void ArmorRecipes::_init()
 	ADD_OBJECT(map[0],Item::ironIngot);
 	ADD_OBJECT(map[0],Item::diamond);
 	ADD_OBJECT(map[0],Item::goldIngot);
+	// Aether
+	ADD_OBJECT(map[0],Item::zaniteGemstone);
+	ADD_OBJECT(map[0],Item::gravititePlate);
 
 	ADD_OBJECT(map[1],Item::helmet_cloth);
 //	ADD_OBJECT(map[1],Item::helmet_chain);
 	ADD_OBJECT(map[1],Item::helmet_iron);
 	ADD_OBJECT(map[1],Item::helmet_diamond);
 	ADD_OBJECT(map[1],Item::helmet_gold);
+	// Aether
+	ADD_OBJECT(map[1],Item::helmet_zanite);
+	ADD_OBJECT(map[1],Item::helmet_gravitite);
 
 	ADD_OBJECT(map[2],Item::chestplate_cloth);
 //	ADD_OBJECT(map[2],Item::chestplate_chain);
 	ADD_OBJECT(map[2],Item::chestplate_iron);
 	ADD_OBJECT(map[2],Item::chestplate_diamond);
 	ADD_OBJECT(map[2],Item::chestplate_gold);
+	// Aether
+	ADD_OBJECT(map[2],Item::chestplate_zanite);
+	ADD_OBJECT(map[2],Item::chestplate_gravitite);
 
 	ADD_OBJECT(map[3],Item::leggings_cloth);
 //	ADD_OBJECT(map[3],Item::leggings_chain);
 	ADD_OBJECT(map[3],Item::leggings_iron);
 	ADD_OBJECT(map[3],Item::leggings_diamond);
 	ADD_OBJECT(map[3],Item::leggings_gold);
+	// Aether
+	ADD_OBJECT(map[3],Item::leggings_zanite);
+	ADD_OBJECT(map[3],Item::leggings_gravitite);
 
 	ADD_OBJECT(map[4],Item::boots_cloth);
 //	ADD_OBJECT(map[4],Item::boots_chain);
 	ADD_OBJECT(map[4],Item::boots_iron);
 	ADD_OBJECT(map[4],Item::boots_diamond);
 	ADD_OBJECT(map[4],Item::boots_gold);
+	// Aether
+	ADD_OBJECT(map[4],Item::boots_zanite);
+	ADD_OBJECT(map[4],Item::boots_gravitite);
 }
 
 // 4J-PB added for quick equip in the inventory
@@ -83,7 +98,9 @@ ArmorRecipes::_eArmorType ArmorRecipes::GetArmorType(int iId)
 	case Item::helmet_chain_Id:	
 	case Item::helmet_iron_Id:		
 	case Item::helmet_diamond_Id:						
-	case Item::helmet_gold_Id:	
+	case Item::helmet_gold_Id:
+	case Item::helmet_zanite_Id:
+	case Item::helmet_gravitite_Id:
 		return eArmorType_Helmet;
 		break;
 
@@ -92,6 +109,8 @@ ArmorRecipes::_eArmorType ArmorRecipes::GetArmorType(int iId)
 	case Item::chestplate_iron_Id:	
 	case Item::chestplate_diamond_Id:
 	case Item::chestplate_gold_Id:
+	case Item::chestplate_zanite_Id:
+	case Item::chestplate_gravitite_Id:
 		return eArmorType_Chestplate;
 		break;
 
@@ -100,6 +119,8 @@ ArmorRecipes::_eArmorType ArmorRecipes::GetArmorType(int iId)
 	case Item::leggings_iron_Id:
 	case Item::leggings_diamond_Id:
 	case Item::leggings_gold_Id:
+	case Item::leggings_zanite_Id:
+	case Item::leggings_gravitite_Id:
 		return eArmorType_Leggings;
 		break;
 
@@ -108,6 +129,8 @@ ArmorRecipes::_eArmorType ArmorRecipes::GetArmorType(int iId)
 	case Item::boots_iron_Id:
 	case Item::boots_diamond_Id:
 	case Item::boots_gold_Id:
+	case Item::boots_zanite_Id:
+	case Item::boots_gravitite_Id:
 		return eArmorType_Boots;
 		break;
 	}

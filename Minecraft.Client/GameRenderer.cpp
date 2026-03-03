@@ -691,7 +691,7 @@ void GameRenderer::setupCamera(float a, int eye)
 	if(app.GetGameSettings(mc->player->GetXboxPad(),eGameSetting_ViewBob) && !mc->player->abilities.flying && !bNoLegAnim && !bNoBobbingAnim) bobView(a);
 
 	float pt = mc->player->oPortalTime + (mc->player->portalTime - mc->player->oPortalTime) * a;
-	if (pt > 0)
+	if (pt > 0 && !mc->player->inAetherPortalOverlay)
 	{
         int multiplier = 20;
         if (mc->player->hasEffect(MobEffect::confusion))

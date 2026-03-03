@@ -26,6 +26,16 @@ bool HalfTransparentTile::blocksLight()
 	return false;
 }
 
+bool HalfTransparentTile::isCubeShaped()
+{
+	return false;
+}
+
+int HalfTransparentTile::getRenderLayer()
+{
+	return 1;
+}
+
 void HalfTransparentTile::registerIcons(IconRegister *iconRegister)
 {
 	icon = iconRegister->registerIcon(texture);

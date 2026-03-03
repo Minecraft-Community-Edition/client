@@ -3259,7 +3259,7 @@ void CMinecraftApp::HandleXuiActions(void)
 								bool gameStarted = false;
 								for(int i = 0; i < pMinecraft->levels.length; i++)
 								{
-									if (pMinecraft->levels.data[i] != NULL)
+									if (pMinecraft->levels.data[i] != nullptr)
 									{
 										gameStarted = true;
 										break;
@@ -4197,6 +4197,107 @@ void CMinecraftApp::loadStringTable()
 		byteArray locFile = m_mediaArchive->getFile(localisationFile);
 		m_stringTable = new StringTable(locFile.data, locFile.length);
 		delete locFile.data;
+
+		// Register Aether strings
+		m_stringTable->registerString(IDS_PROGRESS_ENTERING_AETHER, L"Entering the Aether");
+		m_stringTable->registerString(IDS_PROGRESS_LEAVING_AETHER, L"Leaving the Aether");
+		m_stringTable->registerString(IDS_TILE_AETHER_GRASS, L"Aether Grass");
+		m_stringTable->registerString(IDS_TILE_AETHER_DIRT, L"Aether Dirt");
+		m_stringTable->registerString(IDS_TILE_HOLYSTONE, L"Holystone");
+		m_stringTable->registerString(IDS_TILE_MOSSY_HOLYSTONE, L"Mossy Holystone");
+		m_stringTable->registerString(IDS_TILE_AMBROSIUM_ORE, L"Ambrosium Ore");
+		m_stringTable->registerString(IDS_TILE_ZANITE_ORE, L"Zanite Ore");
+		m_stringTable->registerString(IDS_TILE_GRAVITITE_ORE, L"Gravitite Ore");
+		m_stringTable->registerString(IDS_TILE_SKYROOT_LOG, L"Skyroot Log");
+		m_stringTable->registerString(IDS_TILE_SKYROOT_PLANKS, L"Skyroot Planks");
+		m_stringTable->registerString(IDS_TILE_SKYROOT_LEAVES, L"Skyroot Leaves");
+		m_stringTable->registerString(IDS_TILE_GOLDEN_OAK_LOG, L"Golden Oak Log");
+		m_stringTable->registerString(IDS_TILE_GOLDEN_OAK_LEAVES, L"Golden Oak Leaves");
+		m_stringTable->registerString(IDS_TILE_QUICKSOIL, L"Quicksoil");
+		m_stringTable->registerString(IDS_TILE_QUICKSOIL_GLASS, L"Quicksoil Glass");
+		m_stringTable->registerString(IDS_TILE_AERCLOUD, L"Aercloud");
+		m_stringTable->registerString(IDS_TILE_AEROGEL, L"Aerogel");
+		m_stringTable->registerString(IDS_TILE_ICESTONE, L"Icestone");
+		m_stringTable->registerString(IDS_TILE_AMBROSIUM_TORCH, L"Ambrosium Torch");
+		m_stringTable->registerString(IDS_TILE_SKYROOT_SAPLING, L"Skyroot Sapling");
+		m_stringTable->registerString(IDS_TILE_GOLDEN_OAK_SAPLING, L"Golden Oak Sapling");
+		m_stringTable->registerString(IDS_TILE_PURPLE_FLOWER, L"Purple Flower");
+		m_stringTable->registerString(IDS_TILE_WHITE_FLOWER, L"White Flower");
+		m_stringTable->registerString(IDS_TILE_ANGELIC_STONE, L"Angelic Stone");
+		m_stringTable->registerString(IDS_TILE_LIGHT_ANGELIC_STONE, L"Light Angelic Stone");
+		m_stringTable->registerString(IDS_TILE_CARVED_STONE, L"Carved Stone");
+		m_stringTable->registerString(IDS_TILE_LIGHT_CARVED_STONE, L"Light Carved Stone");
+		m_stringTable->registerString(IDS_TILE_HELLFIRE_STONE, L"Hellfire Stone");
+		m_stringTable->registerString(IDS_TILE_LIGHT_HELLFIRE_STONE, L"Light Hellfire Stone");
+		m_stringTable->registerString(IDS_TILE_PILLAR, L"Pillar");
+		m_stringTable->registerString(IDS_TILE_PILLAR_CARVED, L"Carved Pillar");
+		m_stringTable->registerString(IDS_TILE_ENCHANTER, L"Enchanter");
+		m_stringTable->registerString(IDS_TILE_FREEZER, L"Freezer");
+		m_stringTable->registerString(IDS_TILE_INCUBATOR, L"Incubator");
+		m_stringTable->registerString(IDS_TILE_LIBRARY_LORE, L"Book of Lore");
+		m_stringTable->registerString(IDS_TILE_GOLD_AERCLOUD, L"Gold Aercloud");
+		m_stringTable->registerString(IDS_TILE_BLUE_AERCLOUD, L"Blue Aercloud");
+
+		// Aether Items
+		m_stringTable->registerString(IDS_ITEM_AMBROSIUM_SHARD, L"Ambrosium Shard");
+		m_stringTable->registerString(IDS_ITEM_ZANITE_GEMSTONE, L"Zanite Gemstone");
+		m_stringTable->registerString(IDS_ITEM_FLAMING_GEMSTONE, L"Flaming Gemstone");
+		m_stringTable->registerString(IDS_ITEM_SKYROOT_STICK, L"Skyroot Stick");
+		m_stringTable->registerString(IDS_ITEM_AECHOR_PETAL, L"Aechor Petal");
+		m_stringTable->registerString(IDS_ITEM_GOLDEN_AMBER, L"Golden Amber");
+		m_stringTable->registerString(IDS_ITEM_GUMMIE_SWET, L"Gummie Swet");
+		m_stringTable->registerString(IDS_ITEM_LIFE_SHARD, L"Life Shard");
+		m_stringTable->registerString(IDS_ITEM_REGENERATION_STONE, L"Regeneration Stone");
+		m_stringTable->registerString(IDS_ITEM_MOA_EGG, L"Moa Egg");
+		m_stringTable->registerString(IDS_ITEM_GOLDEN_FEATHER, L"Golden Feather");
+		m_stringTable->registerString(IDS_ITEM_AETHER_KEY, L"Key");
+		m_stringTable->registerString(IDS_ITEM_SKYROOT_BUCKET, L"Skyroot Bucket");
+		m_stringTable->registerString(IDS_ITEM_SKYROOT_BUCKET_WATER, L"Skyroot Water Bucket");
+		m_stringTable->registerString(IDS_ITEM_SKYROOT_BUCKET_MILK, L"Skyroot Milk Bucket");
+		m_stringTable->registerString(IDS_ITEM_SKYROOT_BUCKET_POISON, L"Skyroot Poison Bucket");
+		m_stringTable->registerString(IDS_ITEM_DART_GOLDEN, L"Golden Dart");
+		m_stringTable->registerString(IDS_ITEM_DART_ENCHANTED, L"Enchanted Dart");
+		m_stringTable->registerString(IDS_ITEM_DART_POISON, L"Poison Dart");
+		m_stringTable->registerString(IDS_ITEM_DART_SHOOTER, L"Dart Shooter");
+		m_stringTable->registerString(IDS_ITEM_DART_SHOOTER_ENCHANTED, L"Enchanted Dart Shooter");
+		m_stringTable->registerString(IDS_ITEM_DART_SHOOTER_POISON, L"Poison Dart Shooter");
+		m_stringTable->registerString(IDS_ITEM_CLOUD_PARACHUTE, L"Cloud Parachute");
+		m_stringTable->registerString(IDS_ITEM_CLOUD_STAFF, L"Cloud Staff");
+		m_stringTable->registerString(IDS_ITEM_NATURE_STAFF, L"Nature Staff");
+		m_stringTable->registerString(IDS_ITEM_REPULSION_SHIELD, L"Repulsion Shield");
+		m_stringTable->registerString(IDS_ITEM_LANCE, L"Lance");
+		m_stringTable->registerString(IDS_ITEM_PIG_SLAYER, L"Pig Slayer");
+		m_stringTable->registerString(IDS_ITEM_VAMPIRE_BLADE, L"Vampire Blade");
+		m_stringTable->registerString(IDS_ITEM_LIGHTNING_KNIFE, L"Lightning Knife");
+		m_stringTable->registerString(IDS_ITEM_SWORD_SKYROOT, L"Skyroot Sword");
+		m_stringTable->registerString(IDS_ITEM_SHOVEL_SKYROOT, L"Skyroot Shovel");
+		m_stringTable->registerString(IDS_ITEM_PICKAXE_SKYROOT, L"Skyroot Pickaxe");
+		m_stringTable->registerString(IDS_ITEM_HATCHET_SKYROOT, L"Skyroot Axe");
+		m_stringTable->registerString(IDS_ITEM_SWORD_HOLYSTONE, L"Holystone Sword");
+		m_stringTable->registerString(IDS_ITEM_SHOVEL_HOLYSTONE, L"Holystone Shovel");
+		m_stringTable->registerString(IDS_ITEM_PICKAXE_HOLYSTONE, L"Holystone Pickaxe");
+		m_stringTable->registerString(IDS_ITEM_HATCHET_HOLYSTONE, L"Holystone Axe");
+		m_stringTable->registerString(IDS_ITEM_SWORD_ZANITE, L"Zanite Sword");
+		m_stringTable->registerString(IDS_ITEM_SHOVEL_ZANITE, L"Zanite Shovel");
+		m_stringTable->registerString(IDS_ITEM_PICKAXE_ZANITE, L"Zanite Pickaxe");
+		m_stringTable->registerString(IDS_ITEM_HATCHET_ZANITE, L"Zanite Axe");
+		m_stringTable->registerString(IDS_ITEM_SWORD_GRAVITITE, L"Gravitite Sword");
+		m_stringTable->registerString(IDS_ITEM_SHOVEL_GRAVITITE, L"Gravitite Shovel");
+		m_stringTable->registerString(IDS_ITEM_PICKAXE_GRAVITITE, L"Gravitite Pickaxe");
+		m_stringTable->registerString(IDS_ITEM_HATCHET_GRAVITITE, L"Gravitite Axe");
+		m_stringTable->registerString(IDS_ITEM_PHOENIX_SWORD, L"Phoenix Sword");
+		m_stringTable->registerString(IDS_ITEM_PHOENIX_SHOVEL, L"Phoenix Shovel");
+		m_stringTable->registerString(IDS_ITEM_PHOENIX_PICKAXE, L"Phoenix Pickaxe");
+		m_stringTable->registerString(IDS_ITEM_PHOENIX_AXE, L"Phoenix Axe");
+		m_stringTable->registerString(IDS_ITEM_HELMET_ZANITE, L"Zanite Helmet");
+		m_stringTable->registerString(IDS_ITEM_CHESTPLATE_ZANITE, L"Zanite Chestplate");
+		m_stringTable->registerString(IDS_ITEM_LEGGINGS_ZANITE, L"Zanite Leggings");
+		m_stringTable->registerString(IDS_ITEM_BOOTS_ZANITE, L"Zanite Boots");
+		m_stringTable->registerString(IDS_ITEM_HELMET_GRAVITITE, L"Gravitite Helmet");
+		m_stringTable->registerString(IDS_ITEM_CHESTPLATE_GRAVITITE, L"Gravitite Chestplate");
+		m_stringTable->registerString(IDS_ITEM_LEGGINGS_GRAVITITE, L"Gravitite Leggings");
+		m_stringTable->registerString(IDS_ITEM_BOOTS_GRAVITITE, L"Gravitite Boots");
+		m_stringTable->registerString(IDS_ITEM_GRAVITITE_PLATE, L"Gravitite Plate");
 	}
 	else
 	{

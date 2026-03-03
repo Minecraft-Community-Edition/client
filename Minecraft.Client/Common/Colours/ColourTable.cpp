@@ -35,6 +35,7 @@ wchar_t *ColourTable::ColourTableElements[eMinecraftColour_COUNT] =
 	L"Foliage_ExtremeHillsEdge",
 	L"Foliage_Jungle",
 	L"Foliage_JungleHills",
+	L"Foliage_Aether",
 	
 	L"Grass_Common",
 	L"Grass_Ocean",
@@ -60,6 +61,7 @@ wchar_t *ColourTable::ColourTableElements[eMinecraftColour_COUNT] =
 	L"Grass_ExtremeHillsEdge",
 	L"Grass_Jungle",
 	L"Grass_JungleHills",
+	L"Grass_Aether",
 
 	L"Water_Ocean",
 	L"Water_Plains",
@@ -84,6 +86,7 @@ wchar_t *ColourTable::ColourTableElements[eMinecraftColour_COUNT] =
 	L"Water_ExtremeHillsEdge",
 	L"Water_Jungle",
 	L"Water_JungleHills",
+	L"Water_Aether",
 
 	L"Sky_Ocean",
 	L"Sky_Plains",
@@ -108,6 +111,7 @@ wchar_t *ColourTable::ColourTableElements[eMinecraftColour_COUNT] =
 	L"Sky_ExtremeHillsEdge",
 	L"Sky_Jungle",
 	L"Sky_JungleHills",
+	L"Sky_Aether",
 
 	L"Tile_RedstoneDust",
 	L"Tile_RedstoneDustUnlit",

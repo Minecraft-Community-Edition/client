@@ -20,7 +20,7 @@ public:
 	static unsigned int getNametagColour(int index);
 
 private:
-	static const wstring MATERIAL_NAMES[5];
+	static const wstring MATERIAL_NAMES[7];
 
 protected:
 	virtual int prepareArmor(shared_ptr<Mob> _player, int layer, float a);

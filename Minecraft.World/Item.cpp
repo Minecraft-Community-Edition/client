@@ -25,6 +25,13 @@ const _Tier *_Tier::IRON = new _Tier(2, 250, 6, 2, 14); //
 const _Tier *_Tier::DIAMOND = new _Tier(3, 1561, 8, 3, 10); //
 const _Tier *_Tier::GOLD = new _Tier(0, 32, 12, 0, 22);
 
+// Aether tiers (Skyroot=Wood, Holystone=Stone, Zanite=Iron, Gravitite=Diamond, Phoenix=Diamond)
+const _Tier *_Tier::SKYROOT = new _Tier(0, 59, 2, 0, 15);
+const _Tier *_Tier::HOLYSTONE = new _Tier(1, 131, 4, 1, 5);
+const _Tier *_Tier::ZANITE = new _Tier(2, 250, 6, 2, 14);
+const _Tier *_Tier::GRAVITITE = new _Tier(3, 1561, 8, 3, 10);
+const _Tier *_Tier::PHOENIX = new _Tier(3, 1561, 8, 3, 10);
+
 Random *Item::random = new Random();
 
 ItemArray Item::items = ItemArray( ITEM_NUM_COUNT );
@@ -233,6 +240,67 @@ Item *Item::pumpkinPie = NULL;
 EnchantedBookItem *Item::enchantedBook = NULL;
 Item *Item::netherQuartz = NULL;
 
+// Aether items
+Item *Item::ambrosiumShard = NULL;
+Item *Item::zaniteGemstone = NULL;
+Item *Item::flamingGemstone = NULL;
+Item *Item::skyrootStick = NULL;
+Item *Item::aechorPetal = NULL;
+Item *Item::goldenAmber = NULL;
+Item *Item::gummieSwet = NULL;
+Item *Item::lifeShard = NULL;
+Item *Item::regenerationStone = NULL;
+Item *Item::moaEgg = NULL;
+Item *Item::goldenFeather = NULL;
+Item *Item::aetherKey = NULL;
+Item *Item::skyrootBucket = NULL;
+Item *Item::skyrootBucketWater = NULL;
+Item *Item::skyrootBucketMilk = NULL;
+Item *Item::skyrootBucketPoison = NULL;
+Item *Item::dartGolden = NULL;
+Item *Item::dartEnchanted = NULL;
+Item *Item::dartPoison = NULL;
+Item *Item::dartShooter = NULL;
+Item *Item::dartShooterEnchanted = NULL;
+Item *Item::dartShooterPoison = NULL;
+Item *Item::cloudParachute = NULL;
+Item *Item::cloudStaff = NULL;
+Item *Item::natureStaff = NULL;
+Item *Item::repulsionShield = NULL;
+Item *Item::aetherLance = NULL;
+Item *Item::pigSlayer = NULL;
+Item *Item::vampireBlade = NULL;
+Item *Item::lightningKnife = NULL;
+Item *Item::sword_skyroot = NULL;
+Item *Item::shovel_skyroot = NULL;
+Item *Item::pickAxe_skyroot = NULL;
+Item *Item::hatchet_skyroot = NULL;
+Item *Item::sword_holystone = NULL;
+Item *Item::shovel_holystone = NULL;
+Item *Item::pickAxe_holystone = NULL;
+Item *Item::hatchet_holystone = NULL;
+Item *Item::sword_zanite = NULL;
+Item *Item::shovel_zanite = NULL;
+Item *Item::pickAxe_zanite = NULL;
+Item *Item::hatchet_zanite = NULL;
+Item *Item::sword_gravitite = NULL;
+Item *Item::shovel_gravitite = NULL;
+Item *Item::pickAxe_gravitite = NULL;
+Item *Item::hatchet_gravitite = NULL;
+Item *Item::phoenixSword = NULL;
+Item *Item::phoenixShovel = NULL;
+Item *Item::phoenixPickaxe = NULL;
+Item *Item::phoenixAxe = NULL;
+ArmorItem *Item::helmet_zanite = NULL;
+ArmorItem *Item::chestplate_zanite = NULL;
+ArmorItem *Item::leggings_zanite = NULL;
+ArmorItem *Item::boots_zanite = NULL;
+ArmorItem *Item::helmet_gravitite = NULL;
+ArmorItem *Item::chestplate_gravitite = NULL;
+ArmorItem *Item::leggings_gravitite = NULL;
+ArmorItem *Item::boots_gravitite = NULL;
+Item *Item::gravititePlate = NULL;
+
 
 void Item::staticCtor()
 {
@@ -319,7 +387,7 @@ void Item::staticCtor()
 	Item::apple = ( new FoodItem(4, 4, FoodConstants::FOOD_SATURATION_LOW, false) )	->setTextureName(L"apple")->setDescriptionId(IDS_ITEM_APPLE)->setUseDescriptionId(IDS_DESC_APPLE);
 	Item::coal = ( new CoalItem(7) )												->setTextureName(L"coal")->setDescriptionId(IDS_ITEM_COAL)->setUseDescriptionId(IDS_DESC_COAL);
 	Item::diamond = ( new Item(8) )													->setBaseItemTypeAndMaterial(eBaseItemType_treasure,	eMaterial_diamond)->setTextureName(L"diamond")->setDescriptionId(IDS_ITEM_DIAMOND)->setUseDescriptionId(IDS_DESC_DIAMONDS);
-	Item::stick = ( new Item(24) )													->setTextureName(L"stick")->handEquipped()->setDescriptionId(IDS_ITEM_STICK)->setUseDescriptionId(IDS_DESC_STICK);
+	Item::stick = ( new Item(24) )													->setBaseItemTypeAndMaterial(eBaseItemType_stick, eMaterial_wood)->setTextureName(L"stick")->handEquipped()->setDescriptionId(IDS_ITEM_STICK)->setUseDescriptionId(IDS_DESC_STICK);
 	Item::mushroomStew = ( new BowlFoodItem(26, 6) )								->setTextureName(L"mushroomStew")->setDescriptionId(IDS_ITEM_MUSHROOM_STEW)->setUseDescriptionId(IDS_DESC_MUSHROOMSTEW);
 
 	Item::string = ( new TilePlanterItem(31, Tile::tripWire) )						->setTextureName(L"string")->setDescriptionId(IDS_ITEM_STRING)->setUseDescriptionId(IDS_DESC_STRING);
@@ -465,6 +533,91 @@ void Item::staticCtor()
 
 	EnchantedBookItem::enchantedBook = (EnchantedBookItem *)(new EnchantedBookItem(147))			->setMaxStackSize(1)->setTextureName(L"enchantedBook")->setDescriptionId(IDS_ITEM_ENCHANTED_BOOK)->setUseDescriptionId(IDS_DESC_ENCHANTED_BOOK);
 	Item::netherQuartz = (new Item(150))->setTextureName(L"netherquartz")->setDescriptionId(IDS_ITEM_NETHER_QUARTZ)->setUseDescriptionId(IDS_DESC_NETHER_QUARTZ);
+
+	// ========== Aether Items ==========
+
+	// -- Materials --
+	Item::ambrosiumShard	= ( new Item(151) )->setTextureName(L"ambrosiumShard")->setDescriptionId(IDS_ITEM_AMBROSIUM_SHARD);
+	Item::zaniteGemstone	= ( new Item(152) )->setBaseItemTypeAndMaterial(eBaseItemType_treasure, eMaterial_zanite)->setTextureName(L"zanite")->setDescriptionId(IDS_ITEM_ZANITE_GEMSTONE);
+	Item::flamingGemstone	= ( new Item(153) )->setTextureName(L"flamingGemstone")->setDescriptionId(IDS_ITEM_FLAMING_GEMSTONE);
+	Item::skyrootStick		= ( new Item(154) )->setBaseItemTypeAndMaterial(eBaseItemType_stick, eMaterial_skyroot)->setTextureName(L"skyrootStick")->handEquipped()->setDescriptionId(IDS_ITEM_SKYROOT_STICK);
+	Item::aechorPetal		= ( new Item(155) )->setTextureName(L"aechorPetal")->setDescriptionId(IDS_ITEM_AECHOR_PETAL);
+	Item::goldenAmber		= ( new Item(156) )->setBaseItemTypeAndMaterial(eBaseItemType_treasure, eMaterial_gravitite)->setTextureName(L"goldenAmber")->setDescriptionId(IDS_ITEM_GOLDEN_AMBER);
+	Item::gummieSwet		= ( new Item(157) )->setTextureName(L"gummieSwet")->setDescriptionId(IDS_ITEM_GUMMIE_SWET);
+	Item::lifeShard			= ( new Item(158) )->setTextureName(L"lifeShard")->setDescriptionId(IDS_ITEM_LIFE_SHARD);
+	Item::regenerationStone	= ( new Item(159) )->setTextureName(L"regenerationStone")->setDescriptionId(IDS_ITEM_REGENERATION_STONE);
+	Item::moaEgg			= ( new Item(160) )->setTextureName(L"moaEgg")->setDescriptionId(IDS_ITEM_MOA_EGG);
+	Item::goldenFeather		= ( new Item(161) )->setTextureName(L"goldenFeather")->setDescriptionId(IDS_ITEM_GOLDEN_FEATHER);
+	Item::aetherKey			= ( new Item(162) )->setTextureName(L"aetherKey")->setDescriptionId(IDS_ITEM_AETHER_KEY);
+
+	// -- Skyroot Buckets --
+	Item::skyrootBucket			= ( new Item(163) )->setBaseItemTypeAndMaterial(eBaseItemType_utensil, eMaterial_skyroot)->setTextureName(L"skyrootBucket")->setDescriptionId(IDS_ITEM_SKYROOT_BUCKET)->setMaxStackSize(16);
+	Item::skyrootBucketWater	= ( new Item(164) )->setTextureName(L"skyrootBucketWater")->setDescriptionId(IDS_ITEM_SKYROOT_BUCKET_WATER)->setMaxStackSize(1);
+	Item::skyrootBucketMilk		= ( new Item(165) )->setTextureName(L"skyrootBucketMilk")->setDescriptionId(IDS_ITEM_SKYROOT_BUCKET_MILK)->setMaxStackSize(1);
+	Item::skyrootBucketPoison	= ( new Item(166) )->setTextureName(L"skyrootBucketPoison")->setDescriptionId(IDS_ITEM_SKYROOT_BUCKET_POISON)->setMaxStackSize(1);
+
+	// -- Darts & Dart Shooters --
+	Item::dartGolden			= ( new Item(167) )->setTextureName(L"dartGolden")->setDescriptionId(IDS_ITEM_DART_GOLDEN);
+	Item::dartEnchanted			= ( new Item(168) )->setTextureName(L"dartEnchanted")->setDescriptionId(IDS_ITEM_DART_ENCHANTED);
+	Item::dartPoison			= ( new Item(169) )->setTextureName(L"dartPoison")->setDescriptionId(IDS_ITEM_DART_POISON);
+	Item::dartShooter			= ( new Item(170) )->setTextureName(L"dartShooter")->setDescriptionId(IDS_ITEM_DART_SHOOTER)->setMaxStackSize(1);
+	Item::dartShooterEnchanted	= ( new Item(171) )->setTextureName(L"dartShooterEnchanted")->setDescriptionId(IDS_ITEM_DART_SHOOTER_ENCHANTED)->setMaxStackSize(1);
+	Item::dartShooterPoison		= ( new Item(172) )->setTextureName(L"dartShooterPoison")->setDescriptionId(IDS_ITEM_DART_SHOOTER_POISON)->setMaxStackSize(1);
+
+	// -- Special Items --
+	Item::cloudParachute	= ( new Item(173) )->setTextureName(L"cloudParachute")->setDescriptionId(IDS_ITEM_CLOUD_PARACHUTE)->setMaxStackSize(1);
+	Item::cloudStaff		= ( new Item(174) )->setTextureName(L"cloudStaff")->handEquipped()->setDescriptionId(IDS_ITEM_CLOUD_STAFF)->setMaxStackSize(1);
+	Item::natureStaff		= ( new Item(175) )->setTextureName(L"natureStaff")->handEquipped()->setDescriptionId(IDS_ITEM_NATURE_STAFF)->setMaxStackSize(1);
+	Item::repulsionShield	= ( new Item(176) )->setTextureName(L"repulsionShield")->setDescriptionId(IDS_ITEM_REPULSION_SHIELD)->setMaxStackSize(1);
+	Item::aetherLance		= ( new WeaponItem(177, _Tier::IRON) )->setBaseItemTypeAndMaterial(eBaseItemType_sword, eMaterial_zanite)->setTextureName(L"lance")->handEquipped()->setDescriptionId(IDS_ITEM_LANCE);
+	Item::pigSlayer			= ( new WeaponItem(178, _Tier::IRON) )->setBaseItemTypeAndMaterial(eBaseItemType_sword, eMaterial_zanite)->setTextureName(L"pigSlayer")->setDescriptionId(IDS_ITEM_PIG_SLAYER);
+	Item::vampireBlade		= ( new WeaponItem(179, _Tier::DIAMOND) )->setBaseItemTypeAndMaterial(eBaseItemType_sword, eMaterial_gravitite)->setTextureName(L"vampireBlade")->setDescriptionId(IDS_ITEM_VAMPIRE_BLADE);
+	Item::lightningKnife	= ( new Item(180) )->setTextureName(L"lightningKnife")->setDescriptionId(IDS_ITEM_LIGHTNING_KNIFE)->setMaxStackSize(16);
+
+	// -- Skyroot Tools (Wood equivalent) --
+	Item::sword_skyroot		= ( new WeaponItem(181, _Tier::SKYROOT) )	->setBaseItemTypeAndMaterial(eBaseItemType_sword,	eMaterial_skyroot)	->setTextureName(L"swordSkyroot")->setDescriptionId(IDS_ITEM_SWORD_SKYROOT);
+	Item::shovel_skyroot	= ( new ShovelItem(182, _Tier::SKYROOT) )	->setBaseItemTypeAndMaterial(eBaseItemType_shovel,	eMaterial_skyroot)	->setTextureName(L"shovelSkyroot")->setDescriptionId(IDS_ITEM_SHOVEL_SKYROOT);
+	Item::pickAxe_skyroot	= ( new PickaxeItem(183, _Tier::SKYROOT) )	->setBaseItemTypeAndMaterial(eBaseItemType_pickaxe,	eMaterial_skyroot)	->setTextureName(L"pickaxeSkyroot")->setDescriptionId(IDS_ITEM_PICKAXE_SKYROOT);
+	Item::hatchet_skyroot	= ( new HatchetItem(184, _Tier::SKYROOT) )	->setBaseItemTypeAndMaterial(eBaseItemType_hatchet,	eMaterial_skyroot)	->setTextureName(L"hatchetSkyroot")->setDescriptionId(IDS_ITEM_HATCHET_SKYROOT);
+
+	// -- Holystone Tools (Stone equivalent) --
+	Item::sword_holystone	= ( new WeaponItem(185, _Tier::HOLYSTONE) )	->setBaseItemTypeAndMaterial(eBaseItemType_sword,	eMaterial_holystone)->setTextureName(L"swordHolystone")->setDescriptionId(IDS_ITEM_SWORD_HOLYSTONE);
+	Item::shovel_holystone	= ( new ShovelItem(186, _Tier::HOLYSTONE) )	->setBaseItemTypeAndMaterial(eBaseItemType_shovel,	eMaterial_holystone)->setTextureName(L"shovelHolystone")->setDescriptionId(IDS_ITEM_SHOVEL_HOLYSTONE);
+	Item::pickAxe_holystone	= ( new PickaxeItem(187, _Tier::HOLYSTONE) )->setBaseItemTypeAndMaterial(eBaseItemType_pickaxe,	eMaterial_holystone)->setTextureName(L"pickaxeHolystone")->setDescriptionId(IDS_ITEM_PICKAXE_HOLYSTONE);
+	Item::hatchet_holystone	= ( new HatchetItem(188, _Tier::HOLYSTONE) )->setBaseItemTypeAndMaterial(eBaseItemType_hatchet,	eMaterial_holystone)->setTextureName(L"hatchetHolystone")->setDescriptionId(IDS_ITEM_HATCHET_HOLYSTONE);
+
+	// -- Zanite Tools (Iron equivalent) --
+	Item::sword_zanite		= ( new WeaponItem(189, _Tier::ZANITE) )	->setBaseItemTypeAndMaterial(eBaseItemType_sword,	eMaterial_zanite)	->setTextureName(L"swordZanite")->setDescriptionId(IDS_ITEM_SWORD_ZANITE);
+	Item::shovel_zanite		= ( new ShovelItem(190, _Tier::ZANITE) )	->setBaseItemTypeAndMaterial(eBaseItemType_shovel,	eMaterial_zanite)	->setTextureName(L"shovelZanite")->setDescriptionId(IDS_ITEM_SHOVEL_ZANITE);
+	Item::pickAxe_zanite	= ( new PickaxeItem(191, _Tier::ZANITE) )	->setBaseItemTypeAndMaterial(eBaseItemType_pickaxe,	eMaterial_zanite)	->setTextureName(L"pickaxeZanite")->setDescriptionId(IDS_ITEM_PICKAXE_ZANITE);
+	Item::hatchet_zanite	= ( new HatchetItem(192, _Tier::ZANITE) )	->setBaseItemTypeAndMaterial(eBaseItemType_hatchet,	eMaterial_zanite)	->setTextureName(L"hatchetZanite")->setDescriptionId(IDS_ITEM_HATCHET_ZANITE);
+
+	// -- Gravitite Tools (Diamond equivalent) --
+	Item::sword_gravitite	= ( new WeaponItem(193, _Tier::GRAVITITE) )	->setBaseItemTypeAndMaterial(eBaseItemType_sword,	eMaterial_gravitite)->setTextureName(L"swordGravitite")->setDescriptionId(IDS_ITEM_SWORD_GRAVITITE);
+	Item::shovel_gravitite	= ( new ShovelItem(194, _Tier::GRAVITITE) )	->setBaseItemTypeAndMaterial(eBaseItemType_shovel,	eMaterial_gravitite)->setTextureName(L"shovelGravitite")->setDescriptionId(IDS_ITEM_SHOVEL_GRAVITITE);
+	Item::pickAxe_gravitite	= ( new PickaxeItem(195, _Tier::GRAVITITE) )->setBaseItemTypeAndMaterial(eBaseItemType_pickaxe,	eMaterial_gravitite)->setTextureName(L"pickaxeGravitite")->setDescriptionId(IDS_ITEM_PICKAXE_GRAVITITE);
+	Item::hatchet_gravitite	= ( new HatchetItem(196, _Tier::GRAVITITE) )->setBaseItemTypeAndMaterial(eBaseItemType_hatchet,	eMaterial_gravitite)->setTextureName(L"hatchetGravitite")->setDescriptionId(IDS_ITEM_HATCHET_GRAVITITE);
+
+	// -- Phoenix Tools (Diamond equivalent) --
+	Item::phoenixSword		= ( new WeaponItem(197, _Tier::PHOENIX) )	->setBaseItemTypeAndMaterial(eBaseItemType_sword,	eMaterial_phoenix)	->setTextureName(L"phoenixSword")->setDescriptionId(IDS_ITEM_PHOENIX_SWORD);
+	Item::phoenixShovel		= ( new ShovelItem(198, _Tier::PHOENIX) )	->setBaseItemTypeAndMaterial(eBaseItemType_shovel,	eMaterial_phoenix)	->setTextureName(L"phoenixShovel")->setDescriptionId(IDS_ITEM_PHOENIX_SHOVEL);
+	Item::phoenixPickaxe	= ( new PickaxeItem(199, _Tier::PHOENIX) )	->setBaseItemTypeAndMaterial(eBaseItemType_pickaxe,	eMaterial_phoenix)	->setTextureName(L"phoenixPickaxe")->setDescriptionId(IDS_ITEM_PHOENIX_PICKAXE);
+	Item::phoenixAxe		= ( new HatchetItem(200, _Tier::PHOENIX) )	->setBaseItemTypeAndMaterial(eBaseItemType_hatchet,	eMaterial_phoenix)	->setTextureName(L"phoenixAxe")->setDescriptionId(IDS_ITEM_PHOENIX_AXE);
+
+	// -- Zanite Armor (Iron equivalent) --
+	Item::helmet_zanite		= (ArmorItem *) ( ( new ArmorItem(201, ArmorItem::ArmorMaterial::ZANITE, 5, ArmorItem::SLOT_HEAD) )	->setBaseItemTypeAndMaterial(eBaseItemType_helmet,		eMaterial_zanite)	->setTextureName(L"helmetZanite")->setDescriptionId(IDS_ITEM_HELMET_ZANITE) );
+	Item::chestplate_zanite	= (ArmorItem *) ( ( new ArmorItem(202, ArmorItem::ArmorMaterial::ZANITE, 5, ArmorItem::SLOT_TORSO) )	->setBaseItemTypeAndMaterial(eBaseItemType_chestplate,	eMaterial_zanite)	->setTextureName(L"chestplateZanite")->setDescriptionId(IDS_ITEM_CHESTPLATE_ZANITE) );
+	Item::leggings_zanite	= (ArmorItem *) ( ( new ArmorItem(203, ArmorItem::ArmorMaterial::ZANITE, 5, ArmorItem::SLOT_LEGS) )	->setBaseItemTypeAndMaterial(eBaseItemType_leggings,	eMaterial_zanite)	->setTextureName(L"leggingsZanite")->setDescriptionId(IDS_ITEM_LEGGINGS_ZANITE) );
+	Item::boots_zanite		= (ArmorItem *) ( ( new ArmorItem(204, ArmorItem::ArmorMaterial::ZANITE, 5, ArmorItem::SLOT_FEET) )	->setBaseItemTypeAndMaterial(eBaseItemType_boots,		eMaterial_zanite)	->setTextureName(L"bootsZanite")->setDescriptionId(IDS_ITEM_BOOTS_ZANITE) );
+
+	// -- Gravitite Armor (Diamond equivalent) --
+	Item::helmet_gravitite		= (ArmorItem *) ( ( new ArmorItem(205, ArmorItem::ArmorMaterial::GRAVITITE, 6, ArmorItem::SLOT_HEAD) )	->setBaseItemTypeAndMaterial(eBaseItemType_helmet,		eMaterial_gravitite)->setTextureName(L"helmetGravitite")->setDescriptionId(IDS_ITEM_HELMET_GRAVITITE) );
+	Item::chestplate_gravitite	= (ArmorItem *) ( ( new ArmorItem(206, ArmorItem::ArmorMaterial::GRAVITITE, 6, ArmorItem::SLOT_TORSO) )	->setBaseItemTypeAndMaterial(eBaseItemType_chestplate,	eMaterial_gravitite)->setTextureName(L"chestplateGravitite")->setDescriptionId(IDS_ITEM_CHESTPLATE_GRAVITITE) );
+	Item::leggings_gravitite	= (ArmorItem *) ( ( new ArmorItem(207, ArmorItem::ArmorMaterial::GRAVITITE, 6, ArmorItem::SLOT_LEGS) )	->setBaseItemTypeAndMaterial(eBaseItemType_leggings,	eMaterial_gravitite)->setTextureName(L"leggingsGravitite")->setDescriptionId(IDS_ITEM_LEGGINGS_GRAVITITE) );
+	Item::boots_gravitite		= (ArmorItem *) ( ( new ArmorItem(208, ArmorItem::ArmorMaterial::GRAVITITE, 6, ArmorItem::SLOT_FEET) )	->setBaseItemTypeAndMaterial(eBaseItemType_boots,		eMaterial_gravitite)->setTextureName(L"bootsGravitite")->setDescriptionId(IDS_ITEM_BOOTS_GRAVITITE) );
+
+	// -- Gravitite crafting material --
+	Item::gravititePlate	= ( new Item(209) )->setBaseItemTypeAndMaterial(eBaseItemType_treasure, eMaterial_gravitite)->setTextureName(L"gravititePlate")->setDescriptionId(IDS_ITEM_GRAVITITE_PLATE);
 }
 
 

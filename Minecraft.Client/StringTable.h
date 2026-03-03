@@ -66,6 +66,7 @@ public:
 
 	LPCWSTR getString(const wstring &id);
 	LPCWSTR getString(int id);
+	void registerString(int id, const wstring &value);
 
 	//static LPCWSTR m_wchLocaleCode[LOCALE_COUNT];
 

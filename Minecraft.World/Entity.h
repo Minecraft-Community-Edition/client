@@ -301,6 +301,7 @@ public:
 	virtual float getPickRadius();
 	virtual Vec3 *getLookAngle();
 	virtual void handleInsidePortal();
+	virtual void handleInsideAetherPortal();
 	virtual void lerpMotion(double xd, double yd, double zd);
 	virtual void handleEntityEvent(byte eventId);
 	virtual void animateHurt();

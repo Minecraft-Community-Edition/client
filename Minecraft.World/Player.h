@@ -113,6 +113,10 @@ public:
 
 protected:
 	bool isInsidePortal;
+	bool isInsideAetherPortal;
+
+public:
+	bool inAetherPortalOverlay;
 
 public:
 	float portalTime, oPortalTime;
@@ -340,6 +344,7 @@ public:
 	virtual Icon *getItemInHandIcon(shared_ptr<ItemInstance> item, int layer);
 	virtual shared_ptr<ItemInstance> getArmor(int pos);
 	virtual void handleInsidePortal();
+	virtual void handleInsideAetherPortal();
 
 	void increaseXp(int i);
 	virtual void withdrawExperienceLevels(int amount);

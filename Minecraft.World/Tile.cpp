@@ -201,6 +201,46 @@ Tile *Tile::stairs_quartz = NULL;
 
 Tile *Tile::woolCarpet = NULL;
 
+AetherPortalTile *Tile::aetherPortalTile = NULL;
+
+// Aether Tiles
+Tile *Tile::aetherGrass = NULL;
+Tile *Tile::aetherDirt = NULL;
+Tile *Tile::holystone = NULL;
+Tile *Tile::mossyHolystone = NULL;
+Tile *Tile::ambrosiumOre = NULL;
+Tile *Tile::zaniteOre = NULL;
+Tile *Tile::gravititeOre = NULL;
+Tile *Tile::skyrootLog = NULL;
+Tile *Tile::skyrootPlanks = NULL;
+Tile *Tile::skyrootLeaves = NULL;
+Tile *Tile::goldenOakLog = NULL;
+Tile *Tile::goldenOakLeaves = NULL;
+Tile *Tile::quicksoil = NULL;
+Tile *Tile::quicksoilGlass = NULL;
+Tile *Tile::aercloud = NULL;
+Tile *Tile::goldAercloud = NULL;
+Tile *Tile::blueAercloud = NULL;
+Tile *Tile::aerogel = NULL;
+Tile *Tile::icestone = NULL;
+Tile *Tile::ambrosiumTorch = NULL;
+Tile *Tile::skyrootSapling = NULL;
+Tile *Tile::goldenOakSapling = NULL;
+Tile *Tile::purpleFlower = NULL;
+Tile *Tile::whiteFlower = NULL;
+Tile *Tile::angelicStone = NULL;
+Tile *Tile::lightAngelicStone = NULL;
+Tile *Tile::carvedStone = NULL;
+Tile *Tile::lightCarvedStone = NULL;
+Tile *Tile::hellfireStone = NULL;
+Tile *Tile::lightHellfireStone = NULL;
+Tile *Tile::pillarTop = NULL;
+Tile *Tile::pillarCarved = NULL;
+Tile *Tile::enchanter = NULL;
+Tile *Tile::freezer = NULL;
+Tile *Tile::incubator = NULL;
+Tile *Tile::libraryLore = NULL;
+
 DWORD Tile::tlsIdxShape = TlsAlloc();
 
 Tile::ThreadStorage::ThreadStorage()
@@ -424,6 +464,67 @@ void Tile::staticCtor()
 	Tile::stairs_quartz =	(new StairTile(156, Tile::quartzBlock, QuartzBlockTile::TYPE_DEFAULT))	->setBaseItemTypeAndMaterial(Item::eBaseItemType_stairs,	Item::eMaterial_quartz)->setTextureName(L"stairsQuartz")->setDescriptionId(IDS_TILE_STAIRS_QUARTZ)->setUseDescriptionId(IDS_DESC_STAIRS);
 
 	Tile::woolCarpet =		(new WoolCarpetTile(171))				->setBaseItemTypeAndMaterial(Item::eBaseItemType_carpet,	Item::eMaterial_cloth)->setDestroyTime(0.1f)->setSoundType(SOUND_CLOTH)->setTextureName(L"woolCarpet")->setLightBlock(0)->setDescriptionId(IDS_TILE_CARPET)->setUseDescriptionId(IDS_DESC_CARPET);
+
+	// Aether Portal
+	Tile::aetherPortalTile = (AetherPortalTile *) ((new AetherPortalTile(137))->setDestroyTime(-1)->setSoundType(Tile::SOUND_GLASS)->setLightEmission(0.75f))->setTextureName(L"water");
+
+	// ---- Aether Blocks ----
+
+	// Natural terrain
+	Tile::aetherGrass =			(new AetherGrassTile(160))				->setDestroyTime(0.45f)->setSoundType(SOUND_GRASS)->setTextureName(L"AetherGrassTop")->sendTileData()->setDescriptionId(IDS_TILE_AETHER_GRASS);
+	Tile::aetherDirt =			(new AetherNaturalTile(161, Material::dirt))			->setDestroyTime(0.375f)->setSoundType(SOUND_GRAVEL)->setTextureName(L"AetherDirt")->sendTileData()->setDescriptionId(IDS_TILE_AETHER_DIRT);
+	Tile::holystone =			(new AetherNaturalTile(162, Material::stone))			->setDestroyTime(1.5f)->setExplodeable(10)->setSoundType(SOUND_STONE)->setTextureName(L"Holystone")->sendTileData()->setDescriptionId(IDS_TILE_HOLYSTONE);
+	Tile::mossyHolystone =		(new AetherNaturalTile(163, Material::stone))			->setDestroyTime(1.5f)->setExplodeable(10)->setSoundType(SOUND_STONE)->setTextureName(L"MossyHolystone")->sendTileData()->setDescriptionId(IDS_TILE_MOSSY_HOLYSTONE);
+	Tile::quicksoil =			(new QuicksoilTile(173))				->setDestroyTime(0.5f)->setSoundType(SOUND_SAND)->setTextureName(L"Quicksoil")->sendTileData()->setDescriptionId(IDS_TILE_QUICKSOIL);
+	Tile::quicksoil->friction = 0.989f;
+	Tile::quicksoilGlass =		(new HalfTransparentTile(174, L"QuicksoilGlass", Material::glass, false))->setDestroyTime(0.3f)->setSoundType(SOUND_GLASS)->setTextureName(L"QuicksoilGlass")->setDescriptionId(IDS_TILE_QUICKSOIL_GLASS);
+	Tile::quicksoilGlass->friction = 0.989f;
+	Tile::icestone =			(new Tile(177, Material::stone))			->setDestroyTime(3.0f)->setExplodeable(5)->setSoundType(SOUND_STONE)->setTextureName(L"Icestone")->setDescriptionId(IDS_TILE_ICESTONE);
+
+	// Ores
+	Tile::ambrosiumOre =		(new AetherOreTile(164))				->setDestroyTime(3.0f)->setExplodeable(5)->setSoundType(SOUND_STONE)->setTextureName(L"AmbrosiumOre")->sendTileData()->setDescriptionId(IDS_TILE_AMBROSIUM_ORE);
+	Tile::zaniteOre =			(new AetherOreTile(165))				->setDestroyTime(3.0f)->setExplodeable(5)->setSoundType(SOUND_STONE)->setTextureName(L"ZaniteOre")->sendTileData()->setDescriptionId(IDS_TILE_ZANITE_ORE);
+	Tile::gravititeOre =		(new AetherOreTile(166))				->setDestroyTime(3.0f)->setExplodeable(5)->setSoundType(SOUND_STONE)->setTextureName(L"GravititeOre")->sendTileData()->setDescriptionId(IDS_TILE_GRAVITITE_ORE);
+
+	// Wood & leaves
+	Tile::skyrootLog =			(new SkyrootLogTile(167))				->setDestroyTime(1.5f)->setSoundType(SOUND_WOOD)->setTextureName(L"SkyrootLogSide")->sendTileData()->setDescriptionId(IDS_TILE_SKYROOT_LOG);
+	Tile::skyrootPlanks =		(new Tile(168, Material::wood))			->setBaseItemTypeAndMaterial(Item::eBaseItemType_structwoodstuff, Item::eMaterial_skyroot)->setDestroyTime(1.5f)->setExplodeable(5)->setSoundType(SOUND_WOOD)->setTextureName(L"Plank")->setDescriptionId(IDS_TILE_SKYROOT_PLANKS);
+	Tile::skyrootLeaves =		(new AetherLeafTile(169))				->setDestroyTime(0.2f)->setLightBlock(1)->setSoundType(SOUND_GRASS)->setTextureName(L"SkyrootLeaves")->setDescriptionId(IDS_TILE_SKYROOT_LEAVES);
+	Tile::goldenOakLog =		(new GoldenOakLogTile(170, L"GoldenOak", L"SkyrootLogTop"))->setDestroyTime(1.5f)->setSoundType(SOUND_WOOD)->setTextureName(L"GoldenOak")->sendTileData()->setDescriptionId(IDS_TILE_GOLDEN_OAK_LOG);
+	Tile::goldenOakLeaves =		(new AetherLeafTile(172))				->setDestroyTime(0.2f)->setLightBlock(1)->setSoundType(SOUND_GRASS)->setTextureName(L"GoldenOakLeaves")->setDescriptionId(IDS_TILE_GOLDEN_OAK_LEAVES);
+
+	// Special blocks
+	Tile::aercloud =			(new AercloudTile(175))					->setDestroyTime(0.2f)->setSoundType(SOUND_CLOTH)->setTextureName(L"Aercloud")->setDescriptionId(IDS_TILE_AERCLOUD);
+	Tile::goldAercloud =		(new GoldAercloudTile(195))				->setDestroyTime(0.2f)->setSoundType(SOUND_CLOTH)->setTextureName(L"Aercloud")->setDescriptionId(IDS_TILE_GOLD_AERCLOUD);
+	Tile::blueAercloud =		(new BlueAercloudTile(196))				->setDestroyTime(0.2f)->setSoundType(SOUND_CLOTH)->setTextureName(L"Aercloud")->setDescriptionId(IDS_TILE_BLUE_AERCLOUD);
+	Tile::aerogel =				(new Tile(176, Material::stone))			->setDestroyTime(1.0f)->setExplodeable(2000)->setSoundType(SOUND_STONE)->setTextureName(L"Aerogel")->setDescriptionId(IDS_TILE_AEROGEL);
+
+	// Torch
+	Tile::ambrosiumTorch =		(new TorchTile(178))					->setBaseItemTypeAndMaterial(Item::eBaseItemType_torch, Item::eMaterial_wood)->setDestroyTime(0.0f)->setLightEmission(15 / 16.0f)->setSoundType(SOUND_WOOD)->setTextureName(L"AmbrosiumTorch")->sendTileData()->setDescriptionId(IDS_TILE_AMBROSIUM_TORCH)->disableMipmap();
+
+	// Saplings & flowers (cross-shaped bushes)
+	Tile::skyrootSapling =		(new AetherSaplingTile(179))				->setDestroyTime(0.0f)->setSoundType(SOUND_GRASS)->setTextureName(L"SkyrootSapling")->setDescriptionId(IDS_TILE_SKYROOT_SAPLING)->disableMipmap();
+	Tile::goldenOakSapling =	(new AetherSaplingTile(180))				->setDestroyTime(0.0f)->setSoundType(SOUND_GRASS)->setTextureName(L"GoldenOakSapling")->setDescriptionId(IDS_TILE_GOLDEN_OAK_SAPLING)->disableMipmap();
+	Tile::purpleFlower =		(new AetherBushTile(181))				->setDestroyTime(0.0f)->setSoundType(SOUND_GRASS)->setTextureName(L"PurpleFlower")->setDescriptionId(IDS_TILE_PURPLE_FLOWER)->disableMipmap();
+	Tile::whiteFlower =			(new AetherBushTile(182))				->setDestroyTime(0.0f)->setSoundType(SOUND_GRASS)->setTextureName(L"WhiteFlower")->setDescriptionId(IDS_TILE_WHITE_FLOWER)->disableMipmap();
+
+	// Dungeon stones
+	Tile::angelicStone =		(new Tile(183, Material::stone))			->setDestroyTime(0.5f)->setExplodeable(10)->setSoundType(SOUND_STONE)->setTextureName(L"AngelicStone")->setDescriptionId(IDS_TILE_ANGELIC_STONE);
+	Tile::lightAngelicStone =	(new Tile(184, Material::stone))			->setDestroyTime(0.5f)->setExplodeable(10)->setSoundType(SOUND_STONE)->setLightEmission(0.75f)->setTextureName(L"LightAngelicStone")->setDescriptionId(IDS_TILE_LIGHT_ANGELIC_STONE);
+	Tile::carvedStone =			(new Tile(185, Material::stone))			->setDestroyTime(0.5f)->setExplodeable(10)->setSoundType(SOUND_STONE)->setTextureName(L"CarvedStone")->setDescriptionId(IDS_TILE_CARVED_STONE);
+	Tile::lightCarvedStone =	(new Tile(186, Material::stone))			->setDestroyTime(0.5f)->setExplodeable(10)->setSoundType(SOUND_STONE)->setLightEmission(0.75f)->setTextureName(L"LightCarvedStone")->setDescriptionId(IDS_TILE_LIGHT_CARVED_STONE);
+	Tile::hellfireStone =		(new Tile(187, Material::stone))			->setDestroyTime(0.5f)->setExplodeable(10)->setSoundType(SOUND_STONE)->setTextureName(L"HellfireStone")->setDescriptionId(IDS_TILE_HELLFIRE_STONE);
+	Tile::lightHellfireStone =	(new Tile(188, Material::stone))			->setDestroyTime(0.5f)->setExplodeable(10)->setSoundType(SOUND_STONE)->setLightEmission(0.75f)->setTextureName(L"LightHellfireStone")->setDescriptionId(IDS_TILE_LIGHT_HELLFIRE_STONE);
+
+	// Pillar blocks
+	Tile::pillarTop =			(new AetherMultiFaceTile(189, L"PillarTop", L"PillarSide"))->setDestroyTime(0.5f)->setExplodeable(10)->setSoundType(SOUND_STONE)->setTextureName(L"PillarSide")->setDescriptionId(IDS_TILE_PILLAR);
+	Tile::pillarCarved =		(new Tile(194, Material::stone))			->setDestroyTime(0.5f)->setExplodeable(10)->setSoundType(SOUND_STONE)->setTextureName(L"PillarCarved")->setDescriptionId(IDS_TILE_PILLAR_CARVED);
+
+	// Functional blocks (side + top textures)
+	Tile::enchanter =			(new AetherMultiFaceTile(190, L"EnchanterTop", L"EnchanterSide"))->setDestroyTime(2.0f)->setSoundType(SOUND_STONE)->setTextureName(L"EnchanterSide")->setDescriptionId(IDS_TILE_ENCHANTER);
+	Tile::freezer =				(new AetherMultiFaceTile(191, L"FreezerTop", L"FreezerSide"))->setDestroyTime(2.0f)->setSoundType(SOUND_STONE)->setTextureName(L"FreezerSide")->setDescriptionId(IDS_TILE_FREEZER);
+	Tile::incubator =			(new AetherMultiFaceTile(192, L"IncubatorTop", L"IncubatorSide"))->setDestroyTime(2.0f)->setSoundType(SOUND_STONE)->setTextureName(L"IncubatorSide")->setDescriptionId(IDS_TILE_INCUBATOR);
+	Tile::libraryLore =			(new AetherMultiFaceTile(193, L"LibraryLoreTop", L"LibraryLoreSide"))->setDestroyTime(2.0f)->setSoundType(SOUND_STONE)->setTextureName(L"LibraryLoreSide")->setDescriptionId(IDS_TILE_LIBRARY_LORE);
 
 	// Special cases for certain items since they can have different icons
 	Item::items[Tile::cloth_Id]				= ( new ClothTileItem(Tile::cloth_Id- 256) )->setTextureName(L"cloth")->setDescriptionId(IDS_TILE_CLOTH)->setUseDescriptionId(IDS_DESC_WOOL);
@@ -1629,4 +1730,42 @@ const int Tile::netherQuartz_Id;
 const int Tile::quartzBlock_Id;
 const int Tile::stairs_quartz_Id;
 const int Tile::woolCarpet_Id;
+
+// Aether tile ODR defs
+const int Tile::aetherGrass_Id;
+const int Tile::aetherDirt_Id;
+const int Tile::holystone_Id;
+const int Tile::mossyHolystone_Id;
+const int Tile::ambrosiumOre_Id;
+const int Tile::zaniteOre_Id;
+const int Tile::gravititeOre_Id;
+const int Tile::skyrootLog_Id;
+const int Tile::skyrootPlanks_Id;
+const int Tile::skyrootLeaves_Id;
+const int Tile::goldenOakLog_Id;
+const int Tile::goldenOakLeaves_Id;
+const int Tile::quicksoil_Id;
+const int Tile::quicksoilGlass_Id;
+const int Tile::aercloud_Id;
+const int Tile::goldAercloud_Id;
+const int Tile::blueAercloud_Id;
+const int Tile::aerogel_Id;
+const int Tile::icestone_Id;
+const int Tile::ambrosiumTorch_Id;
+const int Tile::skyrootSapling_Id;
+const int Tile::goldenOakSapling_Id;
+const int Tile::purpleFlower_Id;
+const int Tile::whiteFlower_Id;
+const int Tile::angelicStone_Id;
+const int Tile::lightAngelicStone_Id;
+const int Tile::carvedStone_Id;
+const int Tile::lightCarvedStone_Id;
+const int Tile::hellfireStone_Id;
+const int Tile::lightHellfireStone_Id;
+const int Tile::pillarTop_Id;
+const int Tile::pillarCarved_Id;
+const int Tile::enchanter_Id;
+const int Tile::freezer_Id;
+const int Tile::incubator_Id;
+const int Tile::libraryLore_Id;
 #endif

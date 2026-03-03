@@ -9,6 +9,8 @@
 #include "MushroomIslandBiome.h"
 #include "TheEndBiome.h"
 #include "TheEndBiomeDecorator.h"
+#include "AetherBiome.h"
+#include "AetherBiomeDecorator.h"
 #include "WaterlilyFeature.h"
 #include "SwampBiome.h"
 #include "TaigaBiome.h"

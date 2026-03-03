@@ -6,6 +6,7 @@
 #pragma once
 
 #define MAX_WEAPON_RECIPES 2
+#define MAX_WEAPON_HANDLES 2
 class WeaponRecipies 
 {
 public:
@@ -16,6 +17,7 @@ public:
 private:
 	static wstring shapes[][4];
 	vector <Object *> *map;
+	static Item *handles[MAX_WEAPON_HANDLES];
 	
 public:
 	void addRecipes(Recipes *r);

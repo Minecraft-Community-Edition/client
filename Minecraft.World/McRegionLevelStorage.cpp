@@ -86,6 +86,11 @@ ChunkStorage *McRegionLevelStorage::createChunkStorage(Dimension *dimension)
 		return new McRegionChunkStorage(m_saveFile, LevelStorage::ENDER_FOLDER);
 	}
 
+	if (dynamic_cast<AetherDimension *>(dimension) != NULL)
+	{
+		return new McRegionChunkStorage(m_saveFile, LevelStorage::AETHER_FOLDER);
+	}
+
     return new McRegionChunkStorage(m_saveFile, L"");
 }
 

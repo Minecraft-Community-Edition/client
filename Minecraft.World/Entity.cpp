@@ -1665,6 +1665,10 @@ void Entity::handleInsidePortal()
 {
 }
 
+void Entity::handleInsideAetherPortal()
+{
+}
+
 void Entity::lerpMotion(double xd, double yd, double zd)
 {
 	this->xd = xd;

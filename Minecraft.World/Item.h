@@ -79,7 +79,14 @@ public:
 		eMaterial_emerald,
 		eMaterial_quartz,
 		eMaterial_apple,
-		eMaterial_carrot
+		eMaterial_carrot,
+
+		// Aether materials
+		eMaterial_skyroot,
+		eMaterial_holystone,
+		eMaterial_zanite,
+		eMaterial_gravitite,
+		eMaterial_phoenix
 	}
 	eMaterial;
 
@@ -123,6 +130,7 @@ public:
 		eBaseItemType_rod,
 		eBaseItemType_giltFruit,
 		eBaseItemType_carpet,
+		eBaseItemType_stick,
 		eBaseItemType_MAXTYPES,
 	}
 	eBaseItemType;
@@ -141,6 +149,13 @@ public:
 		static const Tier *IRON; //
 		static const Tier *DIAMOND; //
 		static const Tier *GOLD;
+
+		// Aether tiers
+		static const Tier *SKYROOT;
+		static const Tier *HOLYSTONE;
+		static const Tier *ZANITE;
+		static const Tier *GRAVITITE;
+		static const Tier *PHOENIX;
 
 	private:
 		const int level;
@@ -385,6 +400,89 @@ public:
 
 	static EnchantedBookItem *enchantedBook;
 
+	// Aether items - materials
+	static Item *ambrosiumShard;
+	static Item *zaniteGemstone;
+	static Item *flamingGemstone;
+	static Item *skyrootStick;
+	static Item *aechorPetal;
+	static Item *goldenAmber;
+	static Item *gummieSwet;
+	static Item *lifeShard;
+	static Item *regenerationStone;
+	static Item *moaEgg;
+	static Item *goldenFeather;
+	static Item *aetherKey;
+
+	// Aether items - buckets
+	static Item *skyrootBucket;
+	static Item *skyrootBucketWater;
+	static Item *skyrootBucketMilk;
+	static Item *skyrootBucketPoison;
+
+	// Aether items - darts
+	static Item *dartGolden;
+	static Item *dartEnchanted;
+	static Item *dartPoison;
+	static Item *dartShooter;
+	static Item *dartShooterEnchanted;
+	static Item *dartShooterPoison;
+
+	// Aether items - special weapons/tools
+	static Item *cloudParachute;
+	static Item *cloudStaff;
+	static Item *natureStaff;
+	static Item *repulsionShield;
+	static Item *aetherLance;
+	static Item *pigSlayer;
+	static Item *vampireBlade;
+	static Item *lightningKnife;
+
+	// Aether tools - Skyroot (Wood equivalent)
+	static Item *sword_skyroot;
+	static Item *shovel_skyroot;
+	static Item *pickAxe_skyroot;
+	static Item *hatchet_skyroot;
+
+	// Aether tools - Holystone (Stone equivalent)
+	static Item *sword_holystone;
+	static Item *shovel_holystone;
+	static Item *pickAxe_holystone;
+	static Item *hatchet_holystone;
+
+	// Aether tools - Zanite (Iron equivalent)
+	static Item *sword_zanite;
+	static Item *shovel_zanite;
+	static Item *pickAxe_zanite;
+	static Item *hatchet_zanite;
+
+	// Aether tools - Gravitite (Diamond equivalent)
+	static Item *sword_gravitite;
+	static Item *shovel_gravitite;
+	static Item *pickAxe_gravitite;
+	static Item *hatchet_gravitite;
+
+	// Aether tools - Phoenix (Diamond equivalent)
+	static Item *phoenixSword;
+	static Item *phoenixShovel;
+	static Item *phoenixPickaxe;
+	static Item *phoenixAxe;
+
+	// Aether armor - Zanite (Iron equivalent)
+	static ArmorItem *helmet_zanite;
+	static ArmorItem *chestplate_zanite;
+	static ArmorItem *leggings_zanite;
+	static ArmorItem *boots_zanite;
+
+	// Aether armor - Gravitite (Diamond equivalent)
+	static ArmorItem *helmet_gravitite;
+	static ArmorItem *chestplate_gravitite;
+	static ArmorItem *leggings_gravitite;
+	static ArmorItem *boots_gravitite;
+
+	// Aether crafting materials
+	static Item *gravititePlate;
+
 
 	static const int shovel_iron_Id			= 256;
 	static const int pickAxe_iron_Id		= 257;
@@ -575,6 +673,67 @@ public:
 
 	static const int enchantedBook_Id = 403;
 	static const int netherQuartz_Id = 406;
+
+	// Aether item IDs
+	static const int ambrosiumShard_Id		= 407;
+	static const int zaniteGemstone_Id		= 408;
+	static const int flamingGemstone_Id		= 409;
+	static const int skyrootStick_Id		= 410;
+	static const int aechorPetal_Id			= 411;
+	static const int goldenAmber_Id			= 412;
+	static const int gummieSwet_Id			= 413;
+	static const int lifeShard_Id			= 414;
+	static const int regenerationStone_Id	= 415;
+	static const int moaEgg_Id				= 416;
+	static const int goldenFeather_Id		= 417;
+	static const int aetherKey_Id			= 418;
+	static const int skyrootBucket_Id		= 419;
+	static const int skyrootBucketWater_Id	= 420;
+	static const int skyrootBucketMilk_Id	= 421;
+	static const int skyrootBucketPoison_Id	= 422;
+	static const int dartGolden_Id			= 423;
+	static const int dartEnchanted_Id		= 424;
+	static const int dartPoison_Id			= 425;
+	static const int dartShooter_Id			= 426;
+	static const int dartShooterEnchanted_Id= 427;
+	static const int dartShooterPoison_Id	= 428;
+	static const int cloudParachute_Id		= 429;
+	static const int cloudStaff_Id			= 430;
+	static const int natureStaff_Id			= 431;
+	static const int repulsionShield_Id		= 432;
+	static const int aetherLance_Id			= 433;
+	static const int pigSlayer_Id			= 434;
+	static const int vampireBlade_Id		= 435;
+	static const int lightningKnife_Id		= 436;
+	static const int sword_skyroot_Id		= 437;
+	static const int shovel_skyroot_Id		= 438;
+	static const int pickAxe_skyroot_Id		= 439;
+	static const int hatchet_skyroot_Id		= 440;
+	static const int sword_holystone_Id		= 441;
+	static const int shovel_holystone_Id	= 442;
+	static const int pickAxe_holystone_Id	= 443;
+	static const int hatchet_holystone_Id	= 444;
+	static const int sword_zanite_Id		= 445;
+	static const int shovel_zanite_Id		= 446;
+	static const int pickAxe_zanite_Id		= 447;
+	static const int hatchet_zanite_Id		= 448;
+	static const int sword_gravitite_Id		= 449;
+	static const int shovel_gravitite_Id	= 450;
+	static const int pickAxe_gravitite_Id	= 451;
+	static const int hatchet_gravitite_Id	= 452;
+	static const int phoenixSword_Id		= 453;
+	static const int phoenixShovel_Id		= 454;
+	static const int phoenixPickaxe_Id		= 455;
+	static const int phoenixAxe_Id			= 456;
+	static const int helmet_zanite_Id		= 457;
+	static const int chestplate_zanite_Id	= 458;
+	static const int leggings_zanite_Id		= 459;
+	static const int boots_zanite_Id		= 460;
+	static const int helmet_gravitite_Id	= 461;
+	static const int chestplate_gravitite_Id= 462;
+	static const int leggings_gravitite_Id	= 463;
+	static const int boots_gravitite_Id		= 464;
+	static const int gravititePlate_Id		= 465;
 
 public:
 	const int id;

@@ -251,6 +251,14 @@ bool BucketItem::emptyBucket(Level *level, double x, double y, double z, int xt,
         } 
 		else 
 		{
+			// Check if water bucket is being placed inside a glowstone frame — Aether portal
+			if (content == Tile::water_Id && level->getTile(xt, yt - 1, zt) == Tile::lightGem_Id)
+			{
+				if (Tile::aetherPortalTile->trySpawnPortal(level, xt, yt, zt, true))
+				{
+					return true;
+				}
+			}
             level->setTileAndData(xt, yt, zt, content, 0);
         }
 

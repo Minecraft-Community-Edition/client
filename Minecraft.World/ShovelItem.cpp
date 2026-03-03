@@ -19,6 +19,10 @@ void ShovelItem::staticCtor()
 	// 4J - brought forward from 1.2.3
 	diggables->data[8] = Tile::hellSand;
 	diggables->data[9] = Tile::mycel;
+	// Aether
+	diggables->data[10] = Tile::aetherGrass;
+	diggables->data[11] = Tile::aetherDirt;
+	diggables->data[12] = Tile::quicksoil;
 }
 
 ShovelItem::ShovelItem(int id, const Tier *tier) : DiggerItem(id, 1, tier, diggables)

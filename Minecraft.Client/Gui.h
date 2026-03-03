@@ -46,6 +46,7 @@ private:
 	void renderPumpkin(int w, int h);
     void renderVignette(float br, int w, int h);
     void renderTp(float br, int w, int h);
+    void renderAetherTp(float br, int w, int h);
     void renderSlot(int slot, int x, int y, float a);
 public:
 	void tick();

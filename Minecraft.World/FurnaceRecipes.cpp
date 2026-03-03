@@ -40,6 +40,9 @@ FurnaceRecipes::FurnaceRecipes()
 	addFurnaceRecipy(Tile::lapisOre_Id, new ItemInstance(Item::dye_powder, 1, DyePowderItem::BLUE), .2f);
 	addFurnaceRecipy(Tile::netherQuartz_Id, new ItemInstance(Item::netherQuartz), .2f);
 
+	// Aether
+	addFurnaceRecipy(Tile::gravititeOre_Id, new ItemInstance(Item::gravititePlate), 1);
+
 
 }
 

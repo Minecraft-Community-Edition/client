@@ -11,5 +11,6 @@
 #include "FlatLevelSource.h"
 #include "TownFeature.h"
 #include "TheEndLevelRandomLevelSource.h"
+#include "AetherLevelSource.h"
 
 #include "CustomLevelSource.h"

@@ -39,24 +39,25 @@ WeighedTreasureArray ServerLevel::RANDOM_BONUS_ITEMS;
 
 C4JThread* ServerLevel::m_updateThread = NULL;
 C4JThread::EventArray* ServerLevel::m_updateTrigger;
-CRITICAL_SECTION ServerLevel::m_updateCS[3];
+CRITICAL_SECTION ServerLevel::m_updateCS[4];
 
-Level *ServerLevel::m_level[3];
-int	   ServerLevel::m_updateChunkX[3][LEVEL_CHUNKS_TO_UPDATE_MAX];
-int	   ServerLevel::m_updateChunkZ[3][LEVEL_CHUNKS_TO_UPDATE_MAX];
-int	   ServerLevel::m_updateChunkCount[3];
-int	   ServerLevel::m_updateTileX[3][MAX_UPDATES];
-int	   ServerLevel::m_updateTileY[3][MAX_UPDATES];
-int	   ServerLevel::m_updateTileZ[3][MAX_UPDATES];
-int	   ServerLevel::m_updateTileCount[3];
-int	   ServerLevel::m_randValue[3];
+Level *ServerLevel::m_level[4];
+int	   ServerLevel::m_updateChunkX[4][LEVEL_CHUNKS_TO_UPDATE_MAX];
+int	   ServerLevel::m_updateChunkZ[4][LEVEL_CHUNKS_TO_UPDATE_MAX];
+int	   ServerLevel::m_updateChunkCount[4];
+int	   ServerLevel::m_updateTileX[4][MAX_UPDATES];
+int	   ServerLevel::m_updateTileY[4][MAX_UPDATES];
+int	   ServerLevel::m_updateTileZ[4][MAX_UPDATES];
+int	   ServerLevel::m_updateTileCount[4];
+int	   ServerLevel::m_randValue[4];
 
 void ServerLevel::staticCtor()
 {
-	m_updateTrigger  = new C4JThread::EventArray(3);
+	m_updateTrigger  = new C4JThread::EventArray(4);
 	InitializeCriticalSection(&m_updateCS[0]);
 	InitializeCriticalSection(&m_updateCS[1]);
 	InitializeCriticalSection(&m_updateCS[2]);
+	InitializeCriticalSection(&m_updateCS[3]);
 
 	m_updateThread = new C4JThread(runUpdate, NULL, "Tile update");
 	m_updateThread->SetProcessor(CPU_CORE_TILE_UPDATE);
@@ -232,16 +233,24 @@ void ServerLevel::tick()
 
 	__int64 time = levelData->getTime() + 1;
 // 4J Stu - Putting this back in, but I have reduced the number of chunks that save when not forced
+	// Stagger saves across dimensions: Overworld(0)=0, Nether(-1)=1, End(1)=2, Aether(2)=3
+	{
+		int saveSlot = 0;
+		if (dimension->id == 0) saveSlot = 0;
+		else if (dimension->id == -1) saveSlot = 1;
+		else if (dimension->id == 1) saveSlot = 2;
+		else if (dimension->id == 2) saveSlot = 3;
 #ifdef _LARGE_WORLDS
-	if (time % (saveInterval) == (dimension->id + 1))
+		if (time % 4 == saveSlot)
 #else
-	if (time % (saveInterval) == (dimension->id * dimension->id * (saveInterval/2)))
+		if (time % (saveInterval) == (saveSlot * (saveInterval / 4)))
 #endif
 	{
 		//app.DebugPrintf("Incremental save\n");
 		PIXBeginNamedEvent(0,"Incremental save");
 		save(false, NULL);
 		PIXEndNamedEvent();
+	}
 	}
 
 	// 4J : WESTY : Changed so that time update goes through stats tracking update code.
@@ -383,6 +392,10 @@ void ServerLevel::tickTiles()
 	else if( dimension->id == 1 )
 	{
 		iLev = 2;
+	}
+	else if( dimension->id == 2 )
+	{
+		iLev = 3;
 	}
 	chunksToPoll.clear();
 
@@ -1386,7 +1399,7 @@ int ServerLevel::runUpdate(void* lpParam)
 		// 4J Stu - Grass and Lava ticks currently take up the majority of all tile updates, so I am limiting them
 		int grassTicks = 0;
 		int lavaTicks = 0;
-		for( unsigned int iLev = 0; iLev < 3; ++iLev )
+		for( unsigned int iLev = 0; iLev < 4; ++iLev )
 		{
 			EnterCriticalSection(&m_updateCS[iLev]);
 			for( int i = 0; i < m_updateChunkCount[iLev]; i++ )

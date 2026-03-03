@@ -110,5 +110,21 @@
 #include "HalfSlabTile.h"
 #include "WoodSlabTile.h"
 #include "WoolCarpetTile.h"
+#include "AetherPortalTile.h"
+
+// Aether Tiles
+#include "AetherNaturalTile.h"
+#include "AetherGrassTile.h"
+#include "SkyrootLogTile.h"
+#include "GoldenOakLogTile.h"
+#include "AetherLeafTile.h"
+#include "AetherBushTile.h"
+#include "AetherSaplingTile.h"
+#include "AetherOreTile.h"
+#include "AercloudTile.h"
+#include "GoldAercloudTile.h"
+#include "BlueAercloudTile.h"
+#include "QuicksoilTile.h"
+#include "AetherMultiFaceTile.h"
 
 

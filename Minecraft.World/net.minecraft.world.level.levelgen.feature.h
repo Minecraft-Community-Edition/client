@@ -16,6 +16,7 @@
 #include "LightGemFeature.h"
 #include "MonsterRoomFeature.h"
 #include "OreFeature.h"
+#include "QuicksoilShelfFeature.h"
 #include "PineFeature.h"
 #include "PumpkinFeature.h"
 #include "ReedsFeature.h"
@@ -33,5 +34,8 @@
 
 #include "DesertWellFeature.h"
 #include "MegaTreeFeature.h"
+
+#include "SkyrootTreeFeature.h"
+#include "GoldenOakTreeFeature.h"
 #include "VinesFeature.h"
 #include "GroundBushFeature.h"

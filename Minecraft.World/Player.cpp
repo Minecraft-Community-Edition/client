@@ -82,6 +82,8 @@ void Player::_init()
 
 
 	isInsidePortal = false;
+	isInsideAetherPortal = false;
+	inAetherPortalOverlay = false;
 
 
 	portalTime = oPortalTime = 0.0f;
@@ -2326,6 +2328,17 @@ void Player::handleInsidePortal()
 	}
 
 	isInsidePortal = true;
+}
+
+void Player::handleInsideAetherPortal()
+{
+	if (changingDimensionDelay > 0)
+	{
+		changingDimensionDelay = 10;
+		return;
+	}
+
+	isInsideAetherPortal = true;
 }
 
 void Player::increaseXp(int i)

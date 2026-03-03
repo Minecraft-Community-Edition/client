@@ -235,7 +235,10 @@ void Gui::render(float a, bool mouseFree, int xMouse, int yMouse)
 		float pt = minecraft->player->oPortalTime + (minecraft->player->portalTime - minecraft->player->oPortalTime) * a;
 		if (pt > 0)
 		{
-			renderTp(pt, screenWidth, screenHeight);
+			if (minecraft->player->inAetherPortalOverlay)
+				renderAetherTp(pt, screenWidth, screenHeight);
+			else
+				renderTp(pt, screenWidth, screenHeight);
 		}
 	}
 
@@ -1144,6 +1147,42 @@ void Gui::renderTp(float br, int w, int h)
     glEnable(GL_ALPHA_TEST);
     glColor4f(1, 1, 1, 1);
 
+}
+
+void Gui::renderAetherTp(float br, int w, int h)
+{
+    if (br < 1)
+	{
+        br = br * br;
+        br = br * br;
+        br = br * 0.8f + 0.2f;
+    }
+
+    glDisable(GL_ALPHA_TEST);
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(false);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(1, 1, 1, br);
+	MemSect(31);
+    minecraft->textures->bindTexture(TN_TERRAIN);
+	MemSect(0);
+	
+	Icon *slot = Tile::calmWater->getTexture(Facing::UP);
+    float u0 = slot->getU0();
+    float v0 = slot->getV0();
+    float u1 = slot->getU1();
+    float v1 = slot->getV1();
+    Tesselator *t = Tesselator::getInstance();
+    t->begin();
+    t->vertexUV((float)(0), (float)( h), (float)( -90), (float)( u0), (float)( v1));
+    t->vertexUV((float)(w), (float)( h), (float)( -90), (float)( u1), (float)( v1));
+    t->vertexUV((float)(w), (float)( 0), (float)( -90), (float)( u1), (float)( v0));
+    t->vertexUV((float)(0), (float)( 0), (float)( -90), (float)( u0), (float)( v0));
+    t->end();
+    glDepthMask(true);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_ALPHA_TEST);
+    glColor4f(1, 1, 1, 1);
 }
 
 void Gui::renderSlot(int slot, int x, int y, float a)

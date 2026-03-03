@@ -40,8 +40,13 @@ wstring ToolRecipies::shapes[][4] =
 	*/	
 //#define ADD_OBJECT(a,b) a.push_back(new Object(b))
 
+Item *ToolRecipies::handles[MAX_TOOL_HANDLES] = { NULL, NULL };
+
 void ToolRecipies::_init()
 {
+	handles[0] = Item::stick;
+	handles[1] = Item::skyrootStick;
+
 	map = new vector <Object *> [MAX_TOOL_RECIPES];
 
 	ADD_OBJECT(map[0],Tile::wood);
@@ -49,30 +54,55 @@ void ToolRecipies::_init()
 	ADD_OBJECT(map[0],Item::ironIngot);
 	ADD_OBJECT(map[0],Item::diamond);
 	ADD_OBJECT(map[0],Item::goldIngot);
+	// Aether
+	ADD_OBJECT(map[0],Tile::skyrootPlanks);
+	ADD_OBJECT(map[0],Tile::holystone);
+	ADD_OBJECT(map[0],Item::zaniteGemstone);
+	ADD_OBJECT(map[0],Item::gravititePlate);
 
 	ADD_OBJECT(map[1],Item::pickAxe_wood);
 	ADD_OBJECT(map[1],Item::pickAxe_stone);
 	ADD_OBJECT(map[1],Item::pickAxe_iron);
 	ADD_OBJECT(map[1],Item::pickAxe_diamond);
 	ADD_OBJECT(map[1],Item::pickAxe_gold);
+	// Aether
+	ADD_OBJECT(map[1],Item::pickAxe_skyroot);
+	ADD_OBJECT(map[1],Item::pickAxe_holystone);
+	ADD_OBJECT(map[1],Item::pickAxe_zanite);
+	ADD_OBJECT(map[1],Item::pickAxe_gravitite);
 
 	ADD_OBJECT(map[2],Item::shovel_wood);
 	ADD_OBJECT(map[2],Item::shovel_stone);
 	ADD_OBJECT(map[2],Item::shovel_iron);
 	ADD_OBJECT(map[2],Item::shovel_diamond);
 	ADD_OBJECT(map[2],Item::shovel_gold);
+	// Aether
+	ADD_OBJECT(map[2],Item::shovel_skyroot);
+	ADD_OBJECT(map[2],Item::shovel_holystone);
+	ADD_OBJECT(map[2],Item::shovel_zanite);
+	ADD_OBJECT(map[2],Item::shovel_gravitite);
 
 	ADD_OBJECT(map[3],Item::hatchet_wood);
 	ADD_OBJECT(map[3],Item::hatchet_stone);
 	ADD_OBJECT(map[3],Item::hatchet_iron);
 	ADD_OBJECT(map[3],Item::hatchet_diamond);
 	ADD_OBJECT(map[3],Item::hatchet_gold);
+	// Aether
+	ADD_OBJECT(map[3],Item::hatchet_skyroot);
+	ADD_OBJECT(map[3],Item::hatchet_holystone);
+	ADD_OBJECT(map[3],Item::hatchet_zanite);
+	ADD_OBJECT(map[3],Item::hatchet_gravitite);
 
 	ADD_OBJECT(map[4],Item::hoe_wood);
 	ADD_OBJECT(map[4],Item::hoe_stone);
 	ADD_OBJECT(map[4],Item::hoe_iron);
 	ADD_OBJECT(map[4],Item::hoe_diamond);
 	ADD_OBJECT(map[4],Item::hoe_gold);
+	// Aether (no hoes)
+	map[4].push_back(NULL);
+	map[4].push_back(NULL);
+	map[4].push_back(NULL);
+	map[4].push_back(NULL);
 }
 
 void ToolRecipies::addRecipes(Recipes *r) 
@@ -80,41 +110,46 @@ void ToolRecipies::addRecipes(Recipes *r)
 	wchar_t wchTypes[7];
 	wchTypes[6]=0;
 
-	for (unsigned int m = 0; m < map[0].size(); m++) 
+	for (int h = 0; h < MAX_TOOL_HANDLES; h++)
 	{
-		Object *pObjMaterial = map[0].at(m);
-
-		for (int t=0; t<MAX_TOOL_RECIPES-1; t++) 
+		for (unsigned int m = 0; m < map[0].size(); m++) 
 		{
-			Item *target = map[t+1].at(m)->item;
+			Object *pObjMaterial = map[0].at(m);
 
-			wchTypes[0]=L'w';
-			wchTypes[1]=L'c';
-			wchTypes[2]=L'i';
-			wchTypes[3]=L'c';
-			wchTypes[5]=L'g';
-			if(pObjMaterial->GetType()==eType_TILE)
+			for (int t=0; t<MAX_TOOL_RECIPES-1; t++) 
 			{
-				wchTypes[4]=L't';
-				r->addShapedRecipy(new ItemInstance(target), 
-					wchTypes,
-					shapes[t], 
+				Object *pObjTarget = map[t+1].at(m);
+				if (pObjTarget == NULL) continue;
+				Item *target = pObjTarget->item;
 
-					L'#', Item::stick,
-					L'X', pObjMaterial->tile,
-					L'T');
-			}
-			else
-			{
-				// must be Item
-				wchTypes[4]=L'i';
-				r->addShapedRecipy(new ItemInstance(target), 
-					wchTypes,
-					shapes[t], 
+				wchTypes[0]=L'w';
+				wchTypes[1]=L'c';
+				wchTypes[2]=L'i';
+				wchTypes[3]=L'c';
+				wchTypes[5]=L'g';
+				if(pObjMaterial->GetType()==eType_TILE)
+				{
+					wchTypes[4]=L't';
+					r->addShapedRecipy(new ItemInstance(target), 
+						wchTypes,
+						shapes[t], 
 
-					L'#', Item::stick,
-					L'X', pObjMaterial->item,
-					L'T');
+						L'#', handles[h],
+						L'X', pObjMaterial->tile,
+						L'T');
+				}
+				else
+				{
+					// must be Item
+					wchTypes[4]=L'i';
+					r->addShapedRecipy(new ItemInstance(target), 
+						wchTypes,
+						shapes[t], 
+
+						L'#', handles[h],
+						L'X', pObjMaterial->item,
+						L'T');
+				}
 			}
 		}
 	}

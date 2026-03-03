@@ -218,6 +218,7 @@ enum eMinecraftColour
 	eMinecraftColour_Foliage_ExtremeHillsEdge,
 	eMinecraftColour_Foliage_Jungle,
 	eMinecraftColour_Foliage_JungleHills,
+	eMinecraftColour_Foliage_Aether,
 	
 	eMinecraftColour_Grass_Common,
 	eMinecraftColour_Grass_Ocean,
@@ -243,6 +244,7 @@ enum eMinecraftColour
 	eMinecraftColour_Grass_ExtremeHillsEdge,
 	eMinecraftColour_Grass_Jungle,
 	eMinecraftColour_Grass_JungleHills,
+	eMinecraftColour_Grass_Aether,
 
 	eMinecraftColour_Water_Ocean,
 	eMinecraftColour_Water_Plains,
@@ -267,6 +269,7 @@ enum eMinecraftColour
 	eMinecraftColour_Water_ExtremeHillsEdge,
 	eMinecraftColour_Water_Jungle,
 	eMinecraftColour_Water_JungleHills,
+	eMinecraftColour_Water_Aether,
 
 	eMinecraftColour_Sky_Ocean,
 	eMinecraftColour_Sky_Plains,
@@ -291,6 +294,7 @@ enum eMinecraftColour
 	eMinecraftColour_Sky_ExtremeHillsEdge,
 	eMinecraftColour_Sky_Jungle,
 	eMinecraftColour_Sky_JungleHills,
+	eMinecraftColour_Sky_Aether,
 
 	eMinecraftColour_Tile_RedstoneDust,
 	eMinecraftColour_Tile_RedstoneDustUnlit,

@@ -340,4 +340,5 @@ ASALocalRun/
 # Release folder (thats on my computer - Whisper)
 x64_Release/
 
-
+# aether asset stuff
+Minecraft.Client/Common/res/TitleUpdate/res/aether_temp

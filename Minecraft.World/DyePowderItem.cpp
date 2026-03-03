@@ -141,6 +141,18 @@ bool DyePowderItem::useOn(shared_ptr<ItemInstance> itemInstance, shared_ptr<Play
 			}
 			return true;
 		}
+		else if (tile == Tile::skyrootSapling_Id || tile == Tile::goldenOakSapling_Id)
+		{
+			if(!bTestUseOnOnly)
+			{
+				if (!level->isClientSide)
+				{
+					((AetherSaplingTile *) Tile::tiles[tile])->growTree(level, x, y, z, level->random);
+					itemInstance->count--;
+				}
+			}
+			return true;
+		}
 		else if (tile == Tile::mushroom1_Id || tile == Tile::mushroom2_Id)
 		{
 			if(!bTestUseOnOnly)

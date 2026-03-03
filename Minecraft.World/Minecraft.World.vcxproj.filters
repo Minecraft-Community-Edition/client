@@ -418,6 +418,12 @@
     <ClInclude Include="SpruceFeature.h">
       <Filter>net\minecraft\world\level\levelgen\feature</Filter>
     </ClInclude>
+    <ClInclude Include="SkyrootTreeFeature.h">
+      <Filter>net\minecraft\world\level\levelgen\feature</Filter>
+    </ClInclude>
+    <ClInclude Include="GoldenOakTreeFeature.h">
+      <Filter>net\minecraft\world\level\levelgen\feature</Filter>
+    </ClInclude>
     <ClInclude Include="PineFeature.h">
       <Filter>net\minecraft\world\level\levelgen\feature</Filter>
     </ClInclude>
@@ -455,6 +461,9 @@
       <Filter>net\minecraft\world\level\levelgen\feature</Filter>
     </ClInclude>
     <ClInclude Include="OreFeature.h">
+      <Filter>net\minecraft\world\level\levelgen\feature</Filter>
+    </ClInclude>
+    <ClInclude Include="QuicksoilShelfFeature.h">
       <Filter>net\minecraft\world\level\levelgen\feature</Filter>
     </ClInclude>
     <ClInclude Include="PumpkinFeature.h">
@@ -683,6 +692,48 @@
       <Filter>net\minecraft\world\level\tile</Filter>
     </ClInclude>
     <ClInclude Include="OreTile.h">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClInclude>
+    <ClInclude Include="AetherPortalTile.h">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClInclude>
+    <ClInclude Include="AetherGrassTile.h">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClInclude>
+    <ClInclude Include="SkyrootLogTile.h">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClInclude>
+    <ClInclude Include="GoldenOakLogTile.h">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClInclude>
+    <ClInclude Include="AetherLeafTile.h">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClInclude>
+    <ClInclude Include="AetherBushTile.h">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClInclude>
+    <ClInclude Include="AetherSaplingTile.h">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClInclude>
+    <ClInclude Include="AetherOreTile.h">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClInclude>
+    <ClInclude Include="AetherNaturalTile.h">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClInclude>
+    <ClInclude Include="AercloudTile.h">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClInclude>
+    <ClInclude Include="GoldAercloudTile.h">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClInclude>
+    <ClInclude Include="BlueAercloudTile.h">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClInclude>
+    <ClInclude Include="QuicksoilTile.h">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClInclude>
+    <ClInclude Include="AetherMultiFaceTile.h">
       <Filter>net\minecraft\world\level\tile</Filter>
     </ClInclude>
     <ClInclude Include="PortalTile.h">
@@ -1951,11 +2002,20 @@
     <ClInclude Include="TheEndBiomeDecorator.h">
       <Filter>net\minecraft\world\level\biome</Filter>
     </ClInclude>
+    <ClInclude Include="AetherBiome.h">
+      <Filter>net\minecraft\world\level\biome</Filter>
+    </ClInclude>
+    <ClInclude Include="AetherBiomeDecorator.h">
+      <Filter>net\minecraft\world\level\biome</Filter>
+    </ClInclude>
     <ClInclude Include="WaterlilyFeature.h">
       <Filter>net\minecraft\world\level\biome</Filter>
     </ClInclude>
     <ClInclude Include="ContainerButtonClickPacket.h">
       <Filter>net\minecraft\network\packet</Filter>
+    </ClInclude>
+    <ClInclude Include="AetherDimension.h">
+      <Filter>net\minecraft\world\level\dimension</Filter>
     </ClInclude>
     <ClInclude Include="TheEndDimension.h">
       <Filter>net\minecraft\world\level\dimension</Filter>
@@ -2069,6 +2129,9 @@
       <Filter>net\minecraft\world\item</Filter>
     </ClInclude>
     <ClInclude Include="TheEndLevelRandomLevelSource.h">
+      <Filter>net\minecraft\world\level\levelgen</Filter>
+    </ClInclude>
+    <ClInclude Include="AetherLevelSource.h">
       <Filter>net\minecraft\world\level\levelgen</Filter>
     </ClInclude>
     <ClInclude Include="AddMushroomIslandLayer.h">
@@ -2895,6 +2958,12 @@
     <ClCompile Include="SpruceFeature.cpp">
       <Filter>net\minecraft\world\level\levelgen\feature</Filter>
     </ClCompile>
+    <ClCompile Include="SkyrootTreeFeature.cpp">
+      <Filter>net\minecraft\world\level\levelgen\feature</Filter>
+    </ClCompile>
+    <ClCompile Include="GoldenOakTreeFeature.cpp">
+      <Filter>net\minecraft\world\level\levelgen\feature</Filter>
+    </ClCompile>
     <ClCompile Include="PineFeature.cpp">
       <Filter>net\minecraft\world\level\levelgen\feature</Filter>
     </ClCompile>
@@ -2932,6 +3001,9 @@
       <Filter>net\minecraft\world\level\levelgen\feature</Filter>
     </ClCompile>
     <ClCompile Include="OreFeature.cpp">
+      <Filter>net\minecraft\world\level\levelgen\feature</Filter>
+    </ClCompile>
+    <ClCompile Include="QuicksoilShelfFeature.cpp">
       <Filter>net\minecraft\world\level\levelgen\feature</Filter>
     </ClCompile>
     <ClCompile Include="PumpkinFeature.cpp">
@@ -3127,6 +3199,48 @@
       <Filter>net\minecraft\world\level\tile</Filter>
     </ClCompile>
     <ClCompile Include="OreTile.cpp">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClCompile>
+    <ClCompile Include="AetherPortalTile.cpp">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClCompile>
+    <ClCompile Include="AetherGrassTile.cpp">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClCompile>
+    <ClCompile Include="SkyrootLogTile.cpp">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClCompile>
+    <ClCompile Include="GoldenOakLogTile.cpp">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClCompile>
+    <ClCompile Include="AetherLeafTile.cpp">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClCompile>
+    <ClCompile Include="AetherBushTile.cpp">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClCompile>
+    <ClCompile Include="AetherSaplingTile.cpp">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClCompile>
+    <ClCompile Include="AetherOreTile.cpp">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClCompile>
+    <ClCompile Include="AetherNaturalTile.cpp">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClCompile>
+    <ClCompile Include="AercloudTile.cpp">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClCompile>
+    <ClCompile Include="GoldAercloudTile.cpp">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClCompile>
+    <ClCompile Include="BlueAercloudTile.cpp">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClCompile>
+    <ClCompile Include="QuicksoilTile.cpp">
+      <Filter>net\minecraft\world\level\tile</Filter>
+    </ClCompile>
+    <ClCompile Include="AetherMultiFaceTile.cpp">
       <Filter>net\minecraft\world\level\tile</Filter>
     </ClCompile>
     <ClCompile Include="PortalTile.cpp">
@@ -4209,11 +4323,20 @@
     <ClCompile Include="TheEndBiomeDecorator.cpp">
       <Filter>net\minecraft\world\level\biome</Filter>
     </ClCompile>
+    <ClCompile Include="AetherBiome.cpp">
+      <Filter>net\minecraft\world\level\biome</Filter>
+    </ClCompile>
+    <ClCompile Include="AetherBiomeDecorator.cpp">
+      <Filter>net\minecraft\world\level\biome</Filter>
+    </ClCompile>
     <ClCompile Include="WaterlilyFeature.cpp">
       <Filter>net\minecraft\world\level\biome</Filter>
     </ClCompile>
     <ClCompile Include="ContainerButtonClickPacket.cpp">
       <Filter>net\minecraft\network\packet</Filter>
+    </ClCompile>
+    <ClCompile Include="AetherDimension.cpp">
+      <Filter>net\minecraft\world\level\dimension</Filter>
     </ClCompile>
     <ClCompile Include="TheEndDimension.cpp">
       <Filter>net\minecraft\world\level\dimension</Filter>
@@ -4315,6 +4438,9 @@
       <Filter>net\minecraft\world\item</Filter>
     </ClCompile>
     <ClCompile Include="TheEndLevelRandomLevelSource.cpp">
+      <Filter>net\minecraft\world\level\levelgen</Filter>
+    </ClCompile>
+    <ClCompile Include="AetherLevelSource.cpp">
       <Filter>net\minecraft\world\level\levelgen</Filter>
     </ClCompile>
     <ClCompile Include="AddMushroomIslandLayer.cpp">

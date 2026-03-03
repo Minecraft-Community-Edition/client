@@ -5,6 +5,7 @@
 #pragma once
 
 #define MAX_TOOL_RECIPES 5
+#define MAX_TOOL_HANDLES 2
 
 class Recipes;
 
@@ -18,6 +19,7 @@ public:
 private:
 	static wstring shapes[][4]; 
 	vector <Object *> *map;
+	static Item *handles[MAX_TOOL_HANDLES];
 
 public:
 	void addRecipes(Recipes *r); 

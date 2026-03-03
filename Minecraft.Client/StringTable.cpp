@@ -166,6 +166,13 @@ LPCWSTR StringTable::getString(int id)
 		return L"";
 }
 
+void StringTable::registerString(int id, const wstring &value)
+{
+	if (id >= (int)m_stringsVec.size())
+		m_stringsVec.resize(id + 1, L"");
+	m_stringsVec[id] = value;
+}
+
 
 
 

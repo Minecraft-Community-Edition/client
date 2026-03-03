@@ -890,6 +890,55 @@ Recipes::Recipes()
 		L'M');
 
 
+	// ========== Aether Recipes ==========
+
+	// Skyroot planks from skyroot log
+	addShapedRecipy(new ItemInstance(Tile::skyrootPlanks, 4), //
+		L"sctg",
+		L"#", //
+		L'#', Tile::skyrootLog,
+		L'S');
+
+	// Skyroot sticks from skyroot planks
+	addShapedRecipy(new ItemInstance(Item::skyrootStick, 4), //
+		L"ssctg",
+		L"#", //
+		L"#", //
+		L'#', Tile::skyrootPlanks,
+		L'S');
+
+	// Ambrosium torch (ambrosium shard + skyroot stick)
+	addShapedRecipy(new ItemInstance(Tile::ambrosiumTorch, 4), //
+		L"sscicig",
+		L"X", //
+		L"#", //
+		L'X', Item::ambrosiumShard,
+		L'#', Item::skyrootStick,
+		L'T');
+
+	// Skyroot planks can craft: crafting table, chest, oak door
+	addShapedRecipy(new ItemInstance(Tile::workBench), //
+		L"ssctg",
+		L"##", //
+		L"##", //
+		L'#', Tile::skyrootPlanks,
+		L'S');
+
+	addShapedRecipy(new ItemInstance((Tile*)Tile::chest), //
+		L"sssctg",
+		L"###", //
+		L"# #", //
+		L"###", //
+		L'#', Tile::skyrootPlanks,
+		L'S');
+
+	addShapedRecipy(new ItemInstance(Item::door_wood, 1), //
+		L"sssctg",
+		L"##", //
+		L"##", //
+		L"##", //
+		L'#', Tile::skyrootPlanks,
+		L'S');
 
 
 	// Sort so the largest recipes get checked first!

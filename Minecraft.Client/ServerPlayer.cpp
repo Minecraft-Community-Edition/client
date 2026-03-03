@@ -538,6 +538,37 @@ void ServerPlayer::doTickB(bool ignorePortal)
 				isInsidePortal = false;
 			}
 		}
+		else if (isInsideAetherPortal)
+		{
+			// Aether portal handling — toggles between Overworld (0) and Aether (2)
+			if (containerMenu != inventoryMenu)
+			{
+				closeContainer();
+			}
+			if (riding != NULL)
+			{
+				this->ride(riding);
+			}
+			else
+			{
+				portalTime += 1 / 80.0f;
+				if (portalTime >= 1)
+				{
+					portalTime = 1;
+					changingDimensionDelay = 10;
+
+					int targetDimension = 0;
+					if (dimension == 2) targetDimension = 0;
+					else targetDimension = 2;
+
+					server->getPlayers()->toggleDimension( dynamic_pointer_cast<ServerPlayer>( shared_from_this() ), targetDimension );
+					lastSentExp = -1;
+					lastSentHealth = -1;
+					lastSentFood = -1;
+				}
+			}
+			isInsideAetherPortal = false;
+		}
 		else
 		{
 			if (portalTime > 0) portalTime -= 1 / 20.0f;

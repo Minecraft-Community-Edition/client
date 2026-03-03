@@ -2493,6 +2493,14 @@ void ClientConnection::handleRespawn(shared_ptr<RespawnPacket> packet)
 		{
 			param->stringId = IDS_PROGRESS_LEAVING_END;
 		}
+		else if( packet->dimension == 2)
+		{
+			param->stringId = IDS_PROGRESS_ENTERING_AETHER;
+		}
+		else if( oldDimension == 2)
+		{
+			param->stringId = IDS_PROGRESS_LEAVING_AETHER;
+		}
 		param->showTooltips = false;
 		param->setFailTimer = false;
 

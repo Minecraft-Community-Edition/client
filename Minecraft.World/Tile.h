@@ -11,6 +11,7 @@ class TallGrass;
 class DeadBushTile;
 class FireTile;
 class PortalTile;
+class AetherPortalTile;
 class MycelTile;
 class PistonExtensionTile;
 class PistonMovingPiece;
@@ -314,6 +315,45 @@ public:
 
 	static const int woolCarpet_Id = 171;
 
+	static const int aetherPortalTile_Id = 137;
+
+	// Aether Blocks (IDs 160-199)
+	static const int aetherGrass_Id = 160;
+	static const int aetherDirt_Id = 161;
+	static const int holystone_Id = 162;
+	static const int mossyHolystone_Id = 163;
+	static const int ambrosiumOre_Id = 164;
+	static const int zaniteOre_Id = 165;
+	static const int gravititeOre_Id = 166;
+	static const int skyrootLog_Id = 167;
+	static const int skyrootPlanks_Id = 168;
+	static const int skyrootLeaves_Id = 169;
+	static const int goldenOakLog_Id = 170;
+	static const int goldenOakLeaves_Id = 172;
+	static const int quicksoil_Id = 173;
+	static const int quicksoilGlass_Id = 174;
+	static const int aercloud_Id = 175;
+	static const int goldAercloud_Id = 195;
+	static const int blueAercloud_Id = 196;
+	static const int aerogel_Id = 176;
+	static const int icestone_Id = 177;
+	static const int ambrosiumTorch_Id = 178;
+	static const int skyrootSapling_Id = 179;
+	static const int goldenOakSapling_Id = 180;
+	static const int purpleFlower_Id = 181;
+	static const int whiteFlower_Id = 182;
+	static const int angelicStone_Id = 183;
+	static const int lightAngelicStone_Id = 184;
+	static const int carvedStone_Id = 185;
+	static const int lightCarvedStone_Id = 186;
+	static const int hellfireStone_Id = 187;
+	static const int lightHellfireStone_Id = 188;
+	static const int pillarTop_Id = 189;
+	static const int enchanter_Id = 190;
+	static const int freezer_Id = 191;
+	static const int incubator_Id = 192;
+	static const int libraryLore_Id = 193;
+	static const int pillarCarved_Id = 194;
 
     static Tile *rock;
     static GrassTile *grass;
@@ -470,6 +510,46 @@ public:
 	static Tile *stairs_quartz;
 
 	static Tile *woolCarpet;
+
+	static AetherPortalTile *aetherPortalTile;
+
+	// Aether Tile Pointers
+	static Tile *aetherGrass;
+	static Tile *aetherDirt;
+	static Tile *holystone;
+	static Tile *mossyHolystone;
+	static Tile *ambrosiumOre;
+	static Tile *zaniteOre;
+	static Tile *gravititeOre;
+	static Tile *skyrootLog;
+	static Tile *skyrootPlanks;
+	static Tile *skyrootLeaves;
+	static Tile *goldenOakLog;
+	static Tile *goldenOakLeaves;
+	static Tile *quicksoil;
+	static Tile *quicksoilGlass;
+	static Tile *aercloud;
+	static Tile *goldAercloud;
+	static Tile *blueAercloud;
+	static Tile *aerogel;
+	static Tile *icestone;
+	static Tile *ambrosiumTorch;
+	static Tile *skyrootSapling;
+	static Tile *goldenOakSapling;
+	static Tile *purpleFlower;
+	static Tile *whiteFlower;
+	static Tile *angelicStone;
+	static Tile *lightAngelicStone;
+	static Tile *carvedStone;
+	static Tile *lightCarvedStone;
+	static Tile *hellfireStone;
+	static Tile *lightHellfireStone;
+	static Tile *pillarTop;
+	static Tile *pillarCarved;
+	static Tile *enchanter;
+	static Tile *freezer;
+	static Tile *incubator;
+	static Tile *libraryLore;
 
 	static void staticCtor();
 

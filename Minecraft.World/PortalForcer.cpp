@@ -11,7 +11,7 @@ PortalForcer::PortalForcer()
 }
 
 
-void PortalForcer::force(Level *level, shared_ptr<Entity> e)
+void PortalForcer::force(Level *level, shared_ptr<Entity> e, int lastDimension)
 {
     if (level->dimension->id == 1)
 	{
@@ -44,18 +44,22 @@ void PortalForcer::force(Level *level, shared_ptr<Entity> e)
         return;
     }
 
-	if (findPortal(level, e))
+	if (findPortal(level, e, lastDimension))
 	{
 		return;
 	}
 
-	createPortal(level, e);
-	findPortal(level, e);
+	createPortal(level, e, lastDimension);
+	findPortal(level, e, lastDimension);
 }
 
 
-bool PortalForcer::findPortal(Level *level, shared_ptr<Entity> e)
+bool PortalForcer::findPortal(Level *level, shared_ptr<Entity> e, int lastDimension)
 {
+	// Determine which portal tile to search for based on dimension
+	bool isAether = (level->dimension->id == 2 || lastDimension == 2);
+	int portalTileId = isAether ? Tile::aetherPortalTile_Id : Tile::portalTile_Id;
+
 	// 4J Stu - Decrease the range at which we search for a portal in the nether given our smaller nether
 	int r = 16;//* 8;
 	if(level->dimension->id == -1)
@@ -87,9 +91,9 @@ bool PortalForcer::findPortal(Level *level, shared_ptr<Entity> e)
 			double zd = (z + 0.5) - e->z;
 			for (int y = level->getHeight() - 1; y >= 0; y--)
 			{
-				if (level->getTile(x, y, z) == Tile::portalTile_Id)
+				if (level->getTile(x, y, z) == portalTileId)
 				{
-					while (level->getTile(x, y - 1, z) == Tile::portalTile_Id)
+					while (level->getTile(x, y - 1, z) == portalTileId)
 					{
 						y--;
 					}
@@ -118,11 +122,11 @@ bool PortalForcer::findPortal(Level *level, shared_ptr<Entity> e)
 		double yt = y + 0.5;
 		double zt = z + 0.5;
 
-		if (level->getTile(x - 1, y, z) == Tile::portalTile_Id) xt -= 0.5;
-		if (level->getTile(x + 1, y, z) == Tile::portalTile_Id) xt += 0.5;
+		if (level->getTile(x - 1, y, z) == portalTileId) xt -= 0.5;
+		if (level->getTile(x + 1, y, z) == portalTileId) xt += 0.5;
 
-		if (level->getTile(x, y, z - 1) == Tile::portalTile_Id) zt -= 0.5;
-		if (level->getTile(x, y, z + 1) == Tile::portalTile_Id) zt += 0.5;
+		if (level->getTile(x, y, z - 1) == portalTileId) zt -= 0.5;
+		if (level->getTile(x, y, z + 1) == portalTileId) zt += 0.5;
 
 		e->moveTo(xt, yt, zt, e->yRot, 0);
 		e->xd = e->yd = e->zd = 0;
@@ -133,8 +137,13 @@ bool PortalForcer::findPortal(Level *level, shared_ptr<Entity> e)
 }
 
 
-bool PortalForcer::createPortal(Level *level, shared_ptr<Entity> e)
+bool PortalForcer::createPortal(Level *level, shared_ptr<Entity> e, int lastDimension)
 {
+	// Determine which portal/frame tiles to use based on dimension
+	bool isAether = (level->dimension->id == 2 || lastDimension == 2);
+	int frameTileId = isAether ? Tile::lightGem_Id : Tile::obsidian_Id;
+	int portalTileId = isAether ? Tile::aetherPortalTile_Id : Tile::portalTile_Id;
+
 	// 4J Stu - Increase the range at which we try and create a portal to stop creating them floating in mid air over lava
 	int r = 16 * 3;
 	double closest = -1;
@@ -341,7 +350,7 @@ bool PortalForcer::createPortal(Level *level, shared_ptr<Entity> e)
 
 					bool border = h < 0;
 
-					level->setTile(xt, yt, zt, border ? Tile::obsidian_Id : 0);
+					level->setTile(xt, yt, zt, border ? frameTileId : 0);
 				}
 			}
 		}
@@ -359,7 +368,7 @@ bool PortalForcer::createPortal(Level *level, shared_ptr<Entity> e)
 				int zt = z + (s - 1) * za;
 
 				bool border = s == 0 || s == 3 || h == -1 || h == 3;
-				level->setTile(xt, yt, zt, border ? Tile::obsidian_Id : Tile::portalTile_Id);
+				level->setTile(xt, yt, zt, border ? frameTileId : portalTileId);
 			}
 		}
 		level->noNeighborUpdate = false;
@@ -374,6 +383,16 @@ bool PortalForcer::createPortal(Level *level, shared_ptr<Entity> e)
 
 				level->updateNeighborsAt(xt, yt, zt, level->getTile(xt, yt, zt));
 			}
+		}
+	}
+
+	// For Aether portals with no solid ground: extend glowstone platform on both sides
+	if (isAether && closest < 0)
+	{
+		for (int ext = 1; ext <= 2; ext++)
+		{
+			level->setTile(x + (-1 - ext) * xa, y - 1, z + (-1 - ext) * za, Tile::lightGem_Id);
+			level->setTile(x + (2 + ext) * xa, y - 1, z + (2 + ext) * za, Tile::lightGem_Id);
 		}
 	}
 

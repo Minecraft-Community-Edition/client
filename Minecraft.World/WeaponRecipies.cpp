@@ -21,8 +21,13 @@ wstring WeaponRecipies::shapes[][4] =
 	};
 */
 
+Item *WeaponRecipies::handles[MAX_WEAPON_HANDLES] = { NULL, NULL };
+
 void WeaponRecipies::_init()
 {
+	handles[0] = Item::stick;
+	handles[1] = Item::skyrootStick;
+
 	map = new vector <Object *> [MAX_WEAPON_RECIPES];
 
 	ADD_OBJECT(map[0],Tile::wood);
@@ -30,12 +35,22 @@ void WeaponRecipies::_init()
 	ADD_OBJECT(map[0],Item::ironIngot);
 	ADD_OBJECT(map[0],Item::diamond);
 	ADD_OBJECT(map[0],Item::goldIngot);
+	// Aether
+	ADD_OBJECT(map[0],Tile::skyrootPlanks);
+	ADD_OBJECT(map[0],Tile::holystone);
+	ADD_OBJECT(map[0],Item::zaniteGemstone);
+	ADD_OBJECT(map[0],Item::gravititePlate);
 
 	ADD_OBJECT(map[1],Item::sword_wood);
 	ADD_OBJECT(map[1],Item::sword_stone);
 	ADD_OBJECT(map[1],Item::sword_iron);
 	ADD_OBJECT(map[1],Item::sword_diamond);
 	ADD_OBJECT(map[1],Item::sword_gold);
+	// Aether
+	ADD_OBJECT(map[1],Item::sword_skyroot);
+	ADD_OBJECT(map[1],Item::sword_holystone);
+	ADD_OBJECT(map[1],Item::sword_zanite);
+	ADD_OBJECT(map[1],Item::sword_gravitite);
 }
 
 void WeaponRecipies::addRecipes(Recipes *r) 
@@ -43,41 +58,44 @@ void WeaponRecipies::addRecipes(Recipes *r)
 	wchar_t wchTypes[7];
 	wchTypes[6]=0;
 
-	for (unsigned int m = 0; m < map[0].size(); m++) 
+	for (int h = 0; h < MAX_WEAPON_HANDLES; h++)
 	{
-		Object *pObjMaterial = map[0].at(m);
-
-		for (int t=0; t<MAX_WEAPON_RECIPES-1; t++) 
+		for (unsigned int m = 0; m < map[0].size(); m++) 
 		{
-			Item *target = map[t+1].at(m)->item;
+			Object *pObjMaterial = map[0].at(m);
 
-			wchTypes[0]=L'w';
-			wchTypes[1]=L'c';
-			wchTypes[2]=L'i';
-			wchTypes[3]=L'c';
-			wchTypes[5]=L'g';
-			if(pObjMaterial->GetType()==eType_TILE)
+			for (int t=0; t<MAX_WEAPON_RECIPES-1; t++) 
 			{
-				wchTypes[4]=L't';
-				r->addShapedRecipy(new ItemInstance(target), 
-					wchTypes,
-					shapes[t], 
+				Item *target = map[t+1].at(m)->item;
 
-					L'#', Item::stick,
-					L'X', pObjMaterial->tile,
-					L'T');
-			}
-			else
-			{
-				// must be Item
-				wchTypes[4]=L'i';
-				r->addShapedRecipy(new ItemInstance(target), 
-					wchTypes,
-					shapes[t], 
+				wchTypes[0]=L'w';
+				wchTypes[1]=L'c';
+				wchTypes[2]=L'i';
+				wchTypes[3]=L'c';
+				wchTypes[5]=L'g';
+				if(pObjMaterial->GetType()==eType_TILE)
+				{
+					wchTypes[4]=L't';
+					r->addShapedRecipy(new ItemInstance(target), 
+						wchTypes,
+						shapes[t], 
 
-					L'#', Item::stick,
-					L'X', pObjMaterial->item,
-					L'T');
+						L'#', handles[h],
+						L'X', pObjMaterial->tile,
+						L'T');
+				}
+				else
+				{
+					// must be Item
+					wchTypes[4]=L'i';
+					r->addShapedRecipy(new ItemInstance(target), 
+						wchTypes,
+						shapes[t], 
+
+						L'#', handles[h],
+						L'X', pObjMaterial->item,
+						L'T');
+				}
 			}
 		}
 	}

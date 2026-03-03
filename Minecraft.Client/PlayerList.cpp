@@ -717,6 +717,16 @@ void PlayerList::toggleDimension(shared_ptr<ServerPlayer> player, int targetDime
 	{
 		player->displayClientMessage(IDS_PLAYER_LEFT_END);
 	}
+	// Aether dimension messages
+	else if(player->dimension != 2 && targetDimension == 2)
+	{
+		// Entering The Aether — reuse a generic progress message
+		player->displayClientMessage(IDS_PLAYER_ENTERED_END); // TODO: Add IDS_PLAYER_ENTERED_AETHER
+	}
+	else if( player->dimension == 2 )
+	{
+		player->displayClientMessage(IDS_PLAYER_LEFT_END); // TODO: Add IDS_PLAYER_LEFT_AETHER
+	}
 
     player->dimension = targetDimension;
 
@@ -750,14 +760,28 @@ void PlayerList::toggleDimension(shared_ptr<ServerPlayer> player, int targetDime
     }
 	else if (player->dimension == 0)
 	{
-        xt *= scale;
-        zt *= scale;
+		if (lastDimension == -1)
+		{
+			// Coming from Nether — scale up
+			xt *= scale;
+			zt *= scale;
+		}
+		// Coming from Aether or End — keep coordinates as-is (1:1)
         player->moveTo(xt, player->y, zt, player->yRot, player->xRot);
         if (player->isAlive())
 		{
             oldLevel->tick(player, false);
         }
     }
+	else if (player->dimension == 2)
+	{
+		// Entering The Aether — 1:1 coordinate mapping with Overworld
+		player->moveTo(xt, player->y, zt, player->yRot, player->xRot);
+		if (player->isAlive())
+		{
+			oldLevel->tick(player, false);
+		}
+	}
 	else
 	{
 		Pos *p = newLevel->getDimensionSpecificSpawn();
@@ -789,7 +813,7 @@ void PlayerList::toggleDimension(shared_ptr<ServerPlayer> player, int targetDime
 			player->moveTo(xt, player->y, zt, player->yRot, player->xRot);
 			newLevel->tick(player, false);
 			newLevel->cache->autoCreate = true;
-			(new PortalForcer())->force(newLevel, player);
+			(new PortalForcer())->force(newLevel, player, lastDimension);
 			newLevel->cache->autoCreate = false;
 		}
 	}
