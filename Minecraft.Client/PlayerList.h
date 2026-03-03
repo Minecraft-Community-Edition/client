@@ -51,7 +51,7 @@ private:
 	int sendAllPlayerInfoIn;
 
 	// 4J Added to maintain which players in which dimensions can receive all packet types
-	vector<shared_ptr<ServerPlayer> > receiveAllPlayers[3];
+	vector<shared_ptr<ServerPlayer> > receiveAllPlayers[4];
 private:
 	shared_ptr<ServerPlayer> findAlivePlayerOnSystem(shared_ptr<ServerPlayer> currentPlayer);
 
