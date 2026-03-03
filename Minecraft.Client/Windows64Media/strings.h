@@ -2024,3 +2024,5 @@
 #define IDS_ITEM_LEGGINGS_GRAVITITE        2018
 #define IDS_ITEM_BOOTS_GRAVITITE           2019
 #define IDS_ITEM_GRAVITITE_PLATE           2020
+
+#define IDS_DLC_MENU_WORLDS 2021 // it was easier for me to move this than to update all the aether stuff. - Bonnie
