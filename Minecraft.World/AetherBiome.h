@@ -10,4 +10,5 @@ public:
 	virtual Feature *getGrassFeature(Random *random);
 	virtual int getGrassColor();
 	virtual int getFolageColor();
+	virtual int getSkyColor(float temp);
 };

@@ -39,6 +39,11 @@ Feature *AetherBiome::getGrassFeature(Random *random)
 	return new TallGrassFeature(Tile::tallgrass_Id, 1);
 }
 
+int AetherBiome::getSkyColor(float temp)
+{
+	return 0x9ecbff;
+}
+
 int AetherBiome::getGrassColor()
 {
 	return 0x8ab69a;
