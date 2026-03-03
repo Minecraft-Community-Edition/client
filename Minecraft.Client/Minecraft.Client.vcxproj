@@ -1285,7 +1285,7 @@ if not exist "$(TargetDir)\savedata" mkdir "$(TargetDir)\savedata"</Command>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <PreprocessorDefinitions>_LARGE_WORLDS;_DEBUG_MENUS_ENABLED;_DEBUG;_CRT_NON_CONFORMING_SWPRINTFS;_CRT_SECURE_NO_WARNINGS;_WINDOWS64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CallAttributedProfiling>Disabled</CallAttributedProfiling>
-      <AdditionalIncludeDirectories>Windows64\Iggy\include;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>Windows64\Iggy\include;$(ProjectDir);$(ProjectDir)\discord;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -1294,9 +1294,10 @@ if not exist "$(TargetDir)\savedata" mkdir "$(TargetDir)\savedata"</Command>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(OutDir)$(ProjectName).pdb</ProgramDatabaseFile>
-      <AdditionalDependencies>d3d11.lib;..\Minecraft.World\x64_Debug\Minecraft.World.lib;%(AdditionalDependencies);XInput9_1_0.lib;..\Minecraft.Client\Windows64\Miles\Lib\mss64.lib</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;..\Minecraft.World\x64_Debug\Minecraft.World.lib;%(AdditionalDependencies);XInput9_1_0.lib;..\Minecraft.Client\Windows64\Miles\Lib\mss64.lib;discord_game_sdk.dll.lib</AdditionalDependencies>
       <ShowProgress>NotSet</ShowProgress>
       <SuppressStartupBanner>false</SuppressStartupBanner>
+      <AdditionalLibraryDirectories>$(ProjectDir)\discord;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <ImageXex>
       <ConfigurationFile>$(ProjectDir)xbox\xex-dev.xml</ConfigurationFile>
