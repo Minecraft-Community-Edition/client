@@ -502,7 +502,29 @@ void ServerPlayer::doTickB(bool ignorePortal)
 
 	if(!ignorePortal)
 	{
-		if (isInsidePortal)
+		// if player falls below y=10 in the Aether, send them back to the Overworld high in the sky
+		if (dimension == 2 && y < 10 && changingDimensionDelay <= 0)
+		{
+			changingDimensionDelay = 10;
+
+			double savedX = x;
+			double savedZ = z;
+			float savedYRot = yRot;
+			float savedXRot = xRot;
+
+			server->getPlayers()->toggleDimension( dynamic_pointer_cast<ServerPlayer>( shared_from_this() ), 0 );
+
+			// Place the player high up
+			double skyY = 214.0;
+			moveTo(savedX, skyY, savedZ, savedYRot, savedXRot);
+			connection->teleport(savedX, skyY, savedZ, savedYRot, savedXRot);
+			fallDistance = 0;
+
+			lastSentExp = -1;
+			lastSentHealth = -1;
+			lastSentFood = -1;
+		}
+		else if (isInsidePortal)
 		{
 			if (server->isNetherEnabled())
 			{
