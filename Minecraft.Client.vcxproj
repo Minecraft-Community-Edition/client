@@ -36790,10 +36790,6 @@ xcopy /q /y /i /s /e $(ProjectDir)Durango\CU  $(LayoutDir)Image\Loose\CU</Comman
     </Object>
   </ItemGroup>
   <ItemGroup>
-    <SDKReference Include="Xbox GameChat API, Version=8.0" />
-    <SDKReference Include="Xbox Services API, Version=8.0" />
-  </ItemGroup>
-  <ItemGroup>
     <Reference Include="windows.xbox.networking.realtimesession">
       <HintPath>Durango\Network\windows.xbox.networking.realtimesession.winmd</HintPath>
       <IsWinMDFile>true</IsWinMDFile>
