@@ -466,6 +466,9 @@
     <ClInclude Include="QuicksoilShelfFeature.h">
       <Filter>net\minecraft\world\level\levelgen\feature</Filter>
     </ClInclude>
+    <ClInclude Include="AerCloudFeature.h">
+      <Filter>net\minecraft\world\level\levelgen\feature</Filter>
+    </ClInclude>
     <ClInclude Include="PumpkinFeature.h">
       <Filter>net\minecraft\world\level\levelgen\feature</Filter>
     </ClInclude>
@@ -3004,6 +3007,9 @@
       <Filter>net\minecraft\world\level\levelgen\feature</Filter>
     </ClCompile>
     <ClCompile Include="QuicksoilShelfFeature.cpp">
+      <Filter>net\minecraft\world\level\levelgen\feature</Filter>
+    </ClCompile>
+    <ClCompile Include="AerCloudFeature.cpp">
       <Filter>net\minecraft\world\level\levelgen\feature</Filter>
     </ClCompile>
     <ClCompile Include="PumpkinFeature.cpp">

@@ -2514,6 +2514,7 @@
     <ClInclude Include="OldChunkStorage.h" />
     <ClInclude Include="OreFeature.h" />
     <ClInclude Include="QuicksoilShelfFeature.h" />
+    <ClInclude Include="AerCloudFeature.h" />
     <ClInclude Include="OreRecipies.h" />
     <ClInclude Include="OreTile.h" />
     <ClInclude Include="OutputStream.h" />
@@ -3540,6 +3541,7 @@
     <ClCompile Include="OldChunkStorage.cpp" />
     <ClCompile Include="OreFeature.cpp" />
     <ClCompile Include="QuicksoilShelfFeature.cpp" />
+    <ClCompile Include="AerCloudFeature.cpp" />
     <ClCompile Include="OreRecipies.cpp" />
     <ClCompile Include="OreTile.cpp" />
     <ClCompile Include="Packet.cpp" />

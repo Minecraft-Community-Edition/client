@@ -12,4 +12,5 @@ public:
 	virtual void fallOn(Level *level, int x, int y, int z, shared_ptr<Entity> entity, float fallDistance);
 	virtual void entityInside(Level *level, int x, int y, int z, shared_ptr<Entity> entity);
 	virtual bool isSolidRender(bool isServerLevel = false);
+	virtual bool shouldRenderFace(LevelSource *level, int x, int y, int z, int face);
 };

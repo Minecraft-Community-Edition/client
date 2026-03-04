@@ -308,7 +308,7 @@ doubleArray AetherLevelSource::getHeights(doubleArray buffer, int x, int y, int 
 					val = val * (1 - slide) + -3000 * slide;
 				}
 				// Slide down at the bottom of the world
-				r = 8;
+				r = 10;
 				if (yy < r)
 				{
 					double slide = (r - yy) / (r - 1.0f);

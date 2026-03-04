@@ -37,5 +37,6 @@
 
 #include "SkyrootTreeFeature.h"
 #include "GoldenOakTreeFeature.h"
+#include "AerCloudFeature.h"
 #include "VinesFeature.h"
 #include "GroundBushFeature.h"

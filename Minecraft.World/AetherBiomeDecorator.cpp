@@ -5,6 +5,7 @@
 #include "net.minecraft.world.level.levelgen.feature.h"
 #include "net.minecraft.world.level.biome.h"
 #include "QuicksoilShelfFeature.h"
+#include "AerCloudFeature.h"
 
 AetherBiomeDecorator::AetherBiomeDecorator(Biome *biome) : BiomeDecorator(biome)
 {
@@ -15,6 +16,16 @@ AetherBiomeDecorator::AetherBiomeDecorator(Biome *biome) : BiomeDecorator(biome)
 
 	// Quicksoil shelves on island undersides
 	quicksoilShelfFeature = new QuicksoilShelfFeature();
+
+	// AerCloud features
+	// Large clouds at island bottoms: radius 6-10, height 2-4, island-bottom mode
+	largeAerCloudFeature = new AerCloudFeature(Tile::aercloud_Id, 6, 10, 2, 4, true);
+	// Small white sky clouds: radius 3-6, height 1-2, free-floating
+	smallAerCloudFeature = new AerCloudFeature(Tile::aercloud_Id, 3, 6, 1, 2, false);
+	// Small gold sky clouds: radius 2-4, height 1-2, free-floating
+	smallGoldAerCloudFeature = new AerCloudFeature(Tile::goldAercloud_Id, 2, 4, 1, 2, false);
+	// Small blue sky clouds: radius 2-4, height 1-2, free-floating
+	smallBlueAerCloudFeature = new AerCloudFeature(Tile::blueAercloud_Id, 2, 4, 1, 2, false);
 
 	// Aether decoration counts
 	treeCount = 2;
@@ -89,6 +100,52 @@ void AetherBiomeDecorator::decorate()
 			quicksoilShelfFeature->place(level, random, x, y, z);
 		}
 	}
+	PIXEndNamedEvent();
+
+	PIXBeginNamedEvent(0, "Decorate Aether clouds");
+
+	// Large aercloud formations at island undersides — gives players a safety net when falling (1 in 5 chunks)
+	if (random->nextInt(5) == 0)
+	{
+		int x = xo + random->nextInt(16) + 8;
+		int z = zo + random->nextInt(16) + 8;
+		int y = level->getHeightmap(x, z);
+		if (y > 0)
+		{
+			largeAerCloudFeature->place(level, random, x, y, z);
+		}
+	}
+
+	// Sky clouds spawn at y=80 or higher
+	const int minCloudY = 80;
+
+	// Small white aerclouds floating in the sky (1 in 10 chunks)
+	if (random->nextInt(10) == 0)
+	{
+		int x = xo + random->nextInt(16) + 8;
+		int z = zo + random->nextInt(16) + 8;
+		int y = minCloudY + random->nextInt(Level::genDepth - 10 - minCloudY);
+		smallAerCloudFeature->place(level, random, x, y, z);
+	}
+
+	// Small gold aerclouds — rare (1 in 30 chunks)
+	if (random->nextInt(30) == 0)
+	{
+		int x = xo + random->nextInt(16) + 8;
+		int z = zo + random->nextInt(16) + 8;
+		int y = minCloudY + random->nextInt(Level::genDepth - 10 - minCloudY);
+		smallGoldAerCloudFeature->place(level, random, x, y, z);
+	}
+
+	// Small blue aerclouds — rarest (1 in 60 chunks)
+	if (random->nextInt(60) == 0)
+	{
+		int x = xo + random->nextInt(16) + 8;
+		int z = zo + random->nextInt(16) + 8;
+		int y = minCloudY + random->nextInt(Level::genDepth - 10 - minCloudY);
+		smallBlueAerCloudFeature->place(level, random, x, y, z);
+	}
+
 	PIXEndNamedEvent();
 }
 

@@ -54,7 +54,7 @@ public:
 
 	int getSpawnYPosition();
 	virtual bool hasBedrockFog(); 
-	double getClearColorScale();
+	virtual double getClearColorScale();
 	virtual bool isFoggyAt(int x, int z);
 
 	// 4J Added

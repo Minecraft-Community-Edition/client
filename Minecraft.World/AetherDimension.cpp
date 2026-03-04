@@ -86,6 +86,16 @@ bool AetherDimension::isFoggyAt(int x, int z)
 	return false;
 }
 
+bool AetherDimension::hasBedrockFog()
+{
+	return false;
+}
+
+double AetherDimension::getClearColorScale()
+{
+	return 1.0;
+}
+
 int AetherDimension::getSpawnYPosition()
 {
 	return 64;
