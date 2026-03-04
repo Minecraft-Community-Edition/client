@@ -231,12 +231,22 @@ UIScene_LoadMenu::UIScene_LoadMenu(int iPad, void *initData, UILayer *parentLaye
 #endif
 			m_bShowTimer = true;
 		}
-#if defined(_DURANGO) 
+#if defined(_DURANGO)
 		m_labelGameName.init(params->saveDetails->UTF16SaveName);
 #else
 
 		m_labelGameName.init(params->saveDetails->UTF8SaveName);
 #endif
+#endif
+#ifdef _WINDOWS64
+		if (params->saveDetails != NULL && params->saveDetails->UTF8SaveName[0] != '\0')
+		{
+			wchar_t wSaveName[128];
+			ZeroMemory(wSaveName, sizeof(wSaveName));
+			mbstowcs(wSaveName, params->saveDetails->UTF8SaveName, 127);
+			m_levelName = wstring(wSaveName);
+			m_labelGameName.init(m_levelName);
+		}
 #endif
 	}
 
@@ -1448,6 +1458,7 @@ void UIScene_LoadMenu::StartGameFromSave(UIScene_LoadMenu* pClass, DWORD dwLocal
 	param->seed = pClass->m_seed;
 	param->saveData = NULL;
 	param->texturePackId = pClass->m_MoreOptionsParams.dwTexturePack;
+	param->levelName = pClass->m_levelName;
 
 	Minecraft *pMinecraft = Minecraft::GetInstance();
 	pMinecraft->skins->selectTexturePackById(pClass->m_MoreOptionsParams.dwTexturePack);

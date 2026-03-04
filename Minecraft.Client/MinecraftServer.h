@@ -39,6 +39,7 @@ typedef struct _NetworkGameInitData
 	unsigned int xzSize;
 	unsigned char hellScale;
 	ESavePlatform savePlatform;
+	wstring levelName;
 
 	_NetworkGameInitData()
 	{
