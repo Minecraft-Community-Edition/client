@@ -6,10 +6,6 @@
 #include "..\Minecraft.Client\ServerConnection.h"
 #include <algorithm>
 #include "..\Minecraft.Client\PS3\PS3Extras\ShutdownManager.h"
-#ifdef _WINDOWS64
-#include "..\Minecraft.Client\Common\Network\PacketRouter.h"
-#include "..\Minecraft.Client\Common\Network\P2PConnectionManager.h"
-#endif
 
 // This current socket implementation is for the creation of a single local link. 2 sockets can be created, one for either end of this local
 // link, the end (0 or 1) is passed as a parameter to the ctor.
@@ -19,10 +15,6 @@ std::queue<byte> Socket::s_hostQueue[2];
 Socket::SocketOutputStreamLocal *Socket::s_hostOutStream[2];
 Socket::SocketInputStreamLocal *Socket::s_hostInStream[2];
 ServerConnection *Socket::s_serverConnection = NULL;
-
-#ifdef _WINDOWS64
-IP2PConnectionManager* Socket::s_p2pManager = NULL;
-#endif
 
 void Socket::Initialise(ServerConnection *serverConnection)
 {
@@ -508,36 +500,29 @@ void Socket::SocketOutputStreamNetwork::writeWithFlags(byteArray b, unsigned int
 			return;
 		}
 
-#ifdef _WINDOWS64
-		// Only attempt P2P for server->client sends (host broadcasting to clients)
-		if( m_queueIdx == SOCKET_SERVER_END && s_p2pManager != NULL && g_PacketRouter.IsP2PEnabled() )
-		{
-			// Try to identify the packet ID from the serialized data
-			// Packet format: first byte(s) contain the packet ID
-			if( length >= 1 )
-			{
-				int packetId = (int)b[offset];
-				EPacketRoutingMode routingMode = Packet::GetRoutingMode(packetId);
-
-				if( routingMode == ROUTING_PREFER_DIRECT || routingMode == ROUTING_DIRECT_ONLY )
-				{
-					if( s_p2pManager->IsDirectConnectionAvailable(socketPlayer) )
-					{
-						EP2PChannel channel = PacketRouter::GetChannelForPacket(packetId);
-						s_p2pManager->SendDirect(socketPlayer, buffer.pbyData, buffer.dwDataSize, channel);
-						return;  // Sent via P2P, skip QNet
-					}
-				}
-			}
-		}
-#endif
-
 		if( m_queueIdx == SOCKET_SERVER_END )
 		{
+			//printf( "Sent %u bytes of data from \"%ls\" to \"%ls\"\n",
+			//buffer.dwDataSize,
+			//hostPlayer->GetGamertag(),
+			//m_socket->networkPlayer->GetGamertag());
+
 			hostPlayer->SendData(socketPlayer, buffer.pbyData, buffer.dwDataSize, QNET_SENDDATA_RELIABLE | QNET_SENDDATA_SEQUENTIAL | flags);
+
+	// 		DWORD queueSize = hostPlayer->GetSendQueueSize( NULL, QNET_GETSENDQUEUESIZE_BYTES  );
+	// 		if( queueSize > 24000 )
+	// 		{
+	// 			//printf("Queue size is: %d, forcing doWork()\n",queueSize);
+	// 			g_NetworkManager.DoWork();
+	// 		}
 		}
 		else
 		{
+			//printf( "Sent %u bytes of data from \"%ls\" to \"%ls\"\n",
+			//buffer.dwDataSize,
+			//m_socket->networkPlayer->GetGamertag(),
+			//hostPlayer->GetGamertag());
+
 			socketPlayer->SendData(hostPlayer, buffer.pbyData, buffer.dwDataSize, QNET_SENDDATA_RELIABLE | QNET_SENDDATA_SEQUENTIAL | flags);
 		}
 	}

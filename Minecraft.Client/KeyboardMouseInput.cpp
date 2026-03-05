@@ -35,6 +35,8 @@ void KeyboardMouseInput::Init()
 	m_mouseGrabbed = false;
 	m_cursorHiddenForUI = false;
 	m_windowFocused = true;
+	m_kbmActive = true;
+	m_screenWantsCursorHidden = false;
 	m_hasInput = false;
 
 	RAWINPUTDEVICE rid;

@@ -191,6 +191,8 @@ UIScene_LoadMenu::UIScene_LoadMenu(int iPad, void *initData, UILayer *parentLaye
 	else
 	{
 
+
+
 #if defined(__PS3__) || defined(__ORBIS__)|| defined(_DURANGO) || defined (__PSVITA__)
 		// convert to utf16
 		uint16_t u16Message[MAX_SAVEFILENAME_LENGTH];

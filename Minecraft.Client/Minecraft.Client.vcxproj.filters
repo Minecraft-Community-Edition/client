@@ -881,6 +881,8 @@
     <None Include="PSVita\Iggy\gdraw\gdraw_shared.inl">
       <Filter>PSVita\Iggy\gdraw</Filter>
     </None>
+    <None Include="miniupnpc\miniupnpcstrings.h.in" />
+    <None Include="miniupnpc\genminiupnpcstrings.vbs" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -2338,9 +2340,6 @@
     <ClInclude Include="Windows64\Resource.h">
       <Filter>Windows64</Filter>
     </ClInclude>
-    <ClInclude Include="Windows64\Windows64_App.h">
-      <Filter>Windows64</Filter>
-    </ClInclude>
     <ClInclude Include="Durango\ApplicationView.h">
       <Filter>Durango\Source Files</Filter>
     </ClInclude>
@@ -2969,6 +2968,9 @@
       <Filter>Common\Source Files\Network</Filter>
     </ClInclude>
     <ClInclude Include="Windows64\Network\P2PConnectionManagerWin.h">
+      <Filter>Common\Source Files\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="Windows64\Network\WinsockNetLayer.h">
       <Filter>Common\Source Files\Network</Filter>
     </ClInclude>
     <ClInclude Include="PS3\PS3Extras\EdgeZLib.h">
@@ -3656,6 +3658,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="KeyboardMouseInput.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Windows64_Minecraft.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="miniupnpc\miniupnpcstrings.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Extrax64Stubs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -5085,13 +5096,13 @@
     <ClCompile Include="Common\Network\LANSessionManager.cpp">
       <Filter>Common\Source Files\Network</Filter>
     </ClCompile>
-    <ClCompile Include="Common\Network\PacketRouter.cpp">
-      <Filter>Common\Source Files\Network</Filter>
-    </ClCompile>
     <ClCompile Include="Common\Network\STUNClient.cpp">
       <Filter>Common\Source Files\Network</Filter>
     </ClCompile>
     <ClCompile Include="Windows64\Network\P2PConnectionManagerWin.cpp">
+      <Filter>Common\Source Files\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="Windows64\Network\WinsockNetLayer.cpp">
       <Filter>Common\Source Files\Network</Filter>
     </ClCompile>
     <ClCompile Include="PS3\PS3Extras\EdgeZLib.cpp">
@@ -5686,6 +5697,45 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="KeyboardMouseInput.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="miniupnpc\connecthostport.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="miniupnpc\igd_desc_parse.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="miniupnpc\minisoap.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="miniupnpc\minissdpc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="miniupnpc\miniupnpc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="miniupnpc\minixml.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="miniupnpc\portlistingparse.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="miniupnpc\receivedata.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="miniupnpc\upnpcommands.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="miniupnpc\upnpdev.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="miniupnpc\miniwget.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="miniupnpc\upnpreplyparse.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="miniupnpc\addr_is_reserved.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

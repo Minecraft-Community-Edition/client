@@ -15,6 +15,8 @@
 // Windows64 DLC store stuff blahhhh - whisper
 #ifdef _WINDOWS64
 #include "Windows64_DLCOffers.h"
+#include "..\..\User.h"
+#include "Windows64_Minecraft.h"
 #include <unordered_map>
 static std::unordered_map<int,int> s_offerIndexToListPos;
 #endif
@@ -166,10 +168,12 @@ void UIScene_DLCOffersMenu::handleInput(int iPad, int key, bool repeat, bool pre
         int iIndex = getControlChildFocus();
         if (iIndex >= 0 && iIndex < Windows64_DLCOffers::Get().GetOfferCount())
         {
+			Minecraft *pMinecraft = Minecraft::GetInstance();
+
             Windows64_DLCOffers::Get().InstallOffer(iIndex,
                 [](const wchar_t* id, bool ok, void*) {
                     wprintf(L"[DLC] Install %ls: %ls\n", id, ok ? L"OK" : L"FAILED");
-                }, nullptr);
+                }, nullptr, pMinecraft->user->name.c_str());
         }
     }
 #endif
@@ -249,9 +253,9 @@ void UIScene_DLCOffersMenu::handlePress(F64 controlId, F64 childId)
             iIndex < Windows64_DLCOffers::Get().GetOfferCount())
         {
             Windows64_DLCOffers::Get().InstallOffer(iIndex,
-                [](const wchar_t* id, bool ok, void*) {
-                    wprintf(L"[DLC] Install %ls: %ls\n", id, ok ? L"OK" : L"FAILED");
-                }, nullptr);
+    [](const wchar_t* id, bool ok, void*) {
+        wprintf(L"[DLC] Install %ls: %ls\n", id, ok ? L"OK" : L"FAILED");
+    }, nullptr, Minecraft::GetInstance()->user->name.c_str());
         }
 
 #else

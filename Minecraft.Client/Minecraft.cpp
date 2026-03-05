@@ -36,6 +36,7 @@
 #include "Camera.h"
 #ifdef _WINDOWS64
 #include "KeyboardMouseInput.h"
+#include "KeyMapping.h"
 #endif
 
 #include "..\Minecraft.World\MobEffect.h"
@@ -1470,7 +1471,7 @@ void Minecraft::run_middle()
 					{
 						if(InputManager.ButtonDown(i, MINECRAFT_ACTION_SNEAK_TOGGLE))			localplayers[i]->ullButtonsPressed|=1LL<<MINECRAFT_ACTION_SNEAK_TOGGLE;
 #ifdef _WINDOWS64
-						if(i == 0 && g_KBMInput.IsKeyDown(KeyboardMouseInput::KEY_SNEAK))		localplayers[i]->ullButtonsPressed|=1LL<<MINECRAFT_ACTION_SNEAK_TOGGLE;
+						if(i == 0 && g_KBMInput.IsKBMActive() && g_KBMInput.IsKeyDown(KeyboardMouseInput::KEY_SNEAK))		localplayers[i]->ullButtonsPressed|=1LL<<MINECRAFT_ACTION_SNEAK_TOGGLE;
 #endif
 					}
 					else
@@ -1481,7 +1482,7 @@ void Minecraft::run_middle()
 					if(InputManager.ButtonPressed(i, MINECRAFT_ACTION_GAME_INFO))				localplayers[i]->ullButtonsPressed|=1LL<<MINECRAFT_ACTION_GAME_INFO;
 
 #ifdef _WINDOWS64
-					if (i == 0)
+					if (i == 0 && g_KBMInput.IsKBMActive())
 					{
 						if(g_KBMInput.IsMouseButtonPressed(KeyboardMouseInput::MOUSE_LEFT))
 							localplayers[i]->ullButtonsPressed|=1LL<<MINECRAFT_ACTION_ACTION;
@@ -1517,12 +1518,6 @@ void Minecraft::run_middle()
 						{
 							showFpsCounter = !showFpsCounter;
 						}
-
-						int wheel = g_KBMInput.GetMouseWheel();
-						if (wheel > 0)
-							localplayers[i]->ullButtonsPressed|=1LL<<MINECRAFT_ACTION_RIGHT_SCROLL;
-						else if (wheel < 0)
-							localplayers[i]->ullButtonsPressed|=1LL<<MINECRAFT_ACTION_LEFT_SCROLL;
 
 						for (int slot = 0; slot < 9; slot++)
 						{
@@ -2339,7 +2334,7 @@ void Minecraft::tick(bool bFirst, bool bUpdateTextures)
 	if (screen == NULL && !ui.GetMenuDisplayed(iPad) )
 	{
 #ifdef _WINDOWS64
-		if (!g_KBMInput.IsMouseGrabbed() && g_KBMInput.IsWindowFocused())
+		if (!g_KBMInput.IsMouseGrabbed() && g_KBMInput.IsWindowFocused() && g_KBMInput.IsKBMActive())
 		{
 			g_KBMInput.SetMouseGrabbed(true);
 		}
@@ -3285,7 +3280,7 @@ void Minecraft::tick(bool bFirst, bool bUpdateTextures)
 			wheel = -1;
 		}
 #ifdef _WINDOWS64
-		if (iPad == 0 && wheel == 0)
+		if (iPad == 0 && wheel == 0 && g_KBMInput.IsKBMActive())
 		{
 			int mw = g_KBMInput.GetMouseWheel();
 			if (mw > 0) wheel = -1;
@@ -3325,7 +3320,7 @@ void Minecraft::tick(bool bFirst, bool bUpdateTextures)
 			}
 
 #ifdef _WINDOWS64
-			bool actionHeld = InputManager.ButtonDown(iPad, MINECRAFT_ACTION_ACTION) || (iPad == 0 && g_KBMInput.IsMouseButtonDown(KeyboardMouseInput::MOUSE_LEFT));
+			bool actionHeld = InputManager.ButtonDown(iPad, MINECRAFT_ACTION_ACTION) || (iPad == 0 && g_KBMInput.IsKBMActive() && g_KBMInput.IsMouseButtonDown(KeyboardMouseInput::MOUSE_LEFT));
 #else
 			bool actionHeld = InputManager.ButtonDown(iPad, MINECRAFT_ACTION_ACTION);
 #endif
@@ -3356,7 +3351,7 @@ void Minecraft::tick(bool bFirst, bool bUpdateTextures)
 		}
 		*/
 #ifdef _WINDOWS64
-		bool useHeld = InputManager.ButtonDown(iPad, MINECRAFT_ACTION_USE) || (iPad == 0 && g_KBMInput.IsMouseButtonDown(KeyboardMouseInput::MOUSE_RIGHT));
+		bool useHeld = InputManager.ButtonDown(iPad, MINECRAFT_ACTION_USE) || (iPad == 0 && g_KBMInput.IsKBMActive() && g_KBMInput.IsMouseButtonDown(KeyboardMouseInput::MOUSE_RIGHT));
 #else
 		bool useHeld = InputManager.ButtonDown(iPad, MINECRAFT_ACTION_USE);
 #endif
@@ -3593,6 +3588,12 @@ void Minecraft::tick(bool bFirst, bool bUpdateTextures)
 	// 		}
 	// 	}
 	// #endif
+
+	
+	if(Keyboard::isKeyDown(options->keyChat->key))
+	{
+		setScreen(new ChatScreen());
+	}
 
 #if 0
 	// 4J - TODO - some replacement for input handling...

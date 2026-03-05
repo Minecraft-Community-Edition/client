@@ -37,8 +37,12 @@
 #include "Resource.h"
 #include "..\..\Minecraft.World\compression.h"
 #include "..\..\Minecraft.World\OldChunkStorage.h"
+#include "Network\WinsockNetLayer.h"
+#include "Extrax64Stubs.h"
 
 #include "Xbox/resource.h"
+
+#include "Windows64_Minecraft.h"
 
 HINSTANCE hMyInst;
 LRESULT CALLBACK DlgProc(HWND hWndDlg, UINT Msg, WPARAM wParam, LPARAM lParam);
@@ -79,6 +83,9 @@ BOOL g_bWidescreen = TRUE;
 
 int g_iScreenWidth = 1920;
 int g_iScreenHeight = 1080;
+
+char g_Win64Username[17] = {0};
+wchar_t g_Win64UsernameW[17] = {0};
 
 void DefineActions(void)
 {
@@ -289,6 +296,11 @@ void MemSect(int sect)
 HINSTANCE               g_hInst = NULL;
 HWND                    g_hWnd = NULL;
 
+HWND GetMinecraftWindowHWND()
+{
+	return g_hWnd;
+}
+
 static bool g_isFullscreen = false;
 static RECT g_windowedRect = {};
 static LONG g_windowedStyle = 0;
@@ -335,6 +347,52 @@ D3D_FEATURE_LEVEL       g_featureLevel = D3D_FEATURE_LEVEL_11_0;
 ID3D11Device*           g_pd3dDevice = NULL;
 ID3D11DeviceContext*    g_pImmediateContext = NULL;
 IDXGISwapChain*         g_pSwapChain = NULL;
+
+static WORD g_originalGammaRamp[3][256];
+static bool g_gammaRampSaved = false;
+
+void Windows64_UpdateGamma(unsigned short usGamma)
+{
+	if (!g_hWnd) return;
+
+	HDC hdc = GetDC(g_hWnd);
+	if (!hdc) return;
+
+	if (!g_gammaRampSaved)
+	{
+		GetDeviceGammaRamp(hdc, g_originalGammaRamp);
+		g_gammaRampSaved = true;
+	}
+
+	float gamma = (float)usGamma / 32768.0f;
+	if (gamma < 0.01f) gamma = 0.01f;
+	if (gamma > 1.0f) gamma = 1.0f;
+
+	float invGamma = 1.0f / (0.5f + gamma * 0.5f);
+
+	WORD ramp[3][256];
+	for (int i = 0; i < 256; i++)
+	{
+		float normalized = (float)i / 255.0f;
+		float corrected = powf(normalized, invGamma);
+		WORD val = (WORD)(corrected * 65535.0f + 0.5f);
+		ramp[0][i] = val;
+		ramp[1][i] = val;
+		ramp[2][i] = val;
+	}
+
+	SetDeviceGammaRamp(hdc, ramp);
+	ReleaseDC(g_hWnd, hdc);
+}
+
+void Windows64_RestoreGamma()
+{
+	if (!g_gammaRampSaved || !g_hWnd) return;
+	HDC hdc = GetDC(g_hWnd);
+	if (!hdc) return;
+	SetDeviceGammaRamp(hdc, g_originalGammaRamp);
+	ReleaseDC(g_hWnd, hdc);
+}
 ID3D11RenderTargetView* g_pRenderTargetView = NULL;
 ID3D11DepthStencilView* g_pDepthStencilView = NULL;
 ID3D11Texture2D*		g_pDepthStencilBuffer = NULL;
@@ -822,6 +880,9 @@ void Render()
 //--------------------------------------------------------------------------------------
 void CleanupDevice()
 {
+	extern void Windows64_RestoreGamma();
+	Windows64_RestoreGamma();
+
 	if( g_pImmediateContext ) g_pImmediateContext->ClearState();
 
 	if( g_pRenderTargetView ) g_pRenderTargetView->Release();
@@ -870,8 +931,32 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 			//g_iScreenWidth = 960;
 			//g_iScreenHeight = 544;
 		}
+
+		char cmdLineA[1024];
+		strncpy_s(cmdLineA, sizeof(cmdLineA), lpCmdLine, _TRUNCATE);
+
+		char *nameArg = strstr(cmdLineA, "-name ");
+		if (nameArg)
+		{
+			nameArg += 6;
+			while (*nameArg == ' ') nameArg++;
+			char nameBuf[17];
+			int n = 0;
+			while (nameArg[n] && nameArg[n] != ' ' && n < 16) { nameBuf[n] = nameArg[n]; n++; }
+			nameBuf[n] = 0;
+			strncpy_s(g_Win64Username, 17, nameBuf, _TRUNCATE);
+		}
 	}
 
+	if (g_Win64Username[0] == 0)
+	{
+		DWORD sz = 17;
+		if (!GetUserNameA(g_Win64Username, &sz))
+			strncpy_s(g_Win64Username, 17, "Player", _TRUNCATE);
+		g_Win64Username[16] = 0;
+	}
+
+	MultiByteToWideChar(CP_ACP, 0, g_Win64Username, -1, g_Win64UsernameW, 17);
 
 	// Initialize global strings
 	MyRegisterClass(hInstance);
@@ -1021,6 +1106,22 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	ProfileManager.SetNotificationsCallback(&CConsoleMinecraftApp::NotificationsCallback,(LPVOID)&app);
 
 #endif
+
+	// Ensure the GameHDD save directory exists at runtime (the 4J_Storage lib expects it)
+	{
+		wchar_t exePath[MAX_PATH];
+		if (GetModuleFileNameW(NULL, exePath, MAX_PATH))
+		{
+			wstring exeDir(exePath);
+			size_t lastSlash = exeDir.find_last_of(L"\\/");
+			if (lastSlash != wstring::npos)
+				exeDir = exeDir.substr(0, lastSlash);
+			wstring gameHDDPath = exeDir + L"\\Windows64\\GameHDD";
+			CreateDirectoryW((exeDir + L"\\Windows64").c_str(), NULL);
+			CreateDirectoryW(gameHDDPath.c_str(), NULL);
+		}
+	}
+
 	// Set a callback for the default player options to be set - when there is no profile data for the player
 	ProfileManager.SetDefaultOptionsCallback(&CConsoleMinecraftApp::DefaultOptionsCallback,(LPVOID)&app);
 #if 0
@@ -1036,7 +1137,17 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	// ProfileManager for XN_LIVE_INVITE_ACCEPTED for QNet.
 	g_NetworkManager.Initialise();
 
+	for (int i = 0; i < MINECRAFT_NET_MAX_PLAYERS; i++)
+	{
+		IQNet::m_player[i].m_smallId = (BYTE)i;
+		IQNet::m_player[i].m_isRemote = false;
+		IQNet::m_player[i].m_isHostPlayer = (i == 0);
+		swprintf_s(IQNet::m_player[i].m_gamertag, 32, L"Player%d", i);
+	}
+	extern wchar_t g_Win64UsernameW[17];
+	wcscpy_s(IQNet::m_player[0].m_gamertag, 32, g_Win64UsernameW);
 
+	WinsockNetLayer::Initialize();
 
 	// 4J-PB moved further down
 	//app.InitGameSettings();
@@ -1135,6 +1246,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	// Intro loop ?
 	while(app.IntroRunning())
 	{
+
 		ProfileManager.Tick();
 		// Tick XUI
 		app.RunFrame();
@@ -1156,14 +1268,30 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	MSG msg = {0};
 	while( WM_QUIT != msg.message )
 	{
-		g_KBMInput.Tick();
-
-		if( PeekMessage( &msg, NULL, 0, 0, PM_REMOVE ) )
+		while( PeekMessage( &msg, NULL, 0, 0, PM_REMOVE ) )
 		{
+			if( msg.message == WM_QUIT ) break;
 			TranslateMessage( &msg );
 			DispatchMessage( &msg );
-			continue;
 		}
+		if( msg.message == WM_QUIT ) break;
+
+		g_KBMInput.Tick();
+		
+		
+
+#ifdef _DEBUG
+		for( int vk = 0; vk < 256; vk++ )
+		{
+			if( g_KBMInput.IsKeyPressed(vk) )
+			{
+				char dbgBuf[64];
+				sprintf_s(dbgBuf, "INPUT: Key pressed vk=0x%02X\n", vk);
+				OutputDebugStringA(dbgBuf);
+			}
+		}
+#endif
+
 		RenderManager.StartFrame();
 #if 0
 		if(pMinecraft->soundEngine->isStreamingWavebankReady() &&
@@ -1186,6 +1314,26 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 		PIXBeginNamedEvent(0,"Input manager tick");
 		InputManager.Tick();
 		PIXEndNamedEvent();
+
+		if (InputManager.IsPadConnected(0))
+		{
+			bool controllerActive = InputManager.ButtonPressed(0) ||
+				InputManager.GetJoypadStick_LX(0,false) != 0.0f || InputManager.GetJoypadStick_LY(0,false) != 0.0f ||
+				InputManager.GetJoypadStick_RX(0,false) != 0.0f || InputManager.GetJoypadStick_RY(0,false) != 0.0f ||
+				InputManager.GetJoypadLTrigger(0,false) != 0 || InputManager.GetJoypadRTrigger(0,false) != 0;
+
+			if (controllerActive && g_KBMInput.IsKBMActive())
+			{
+				g_KBMInput.SetKBMActive(false);
+				g_KBMInput.SetMouseGrabbed(false);
+				g_KBMInput.SetCursorHiddenForUI(true);
+			}
+			else if (!g_KBMInput.IsKBMActive() && g_KBMInput.HasAnyInput())
+			{
+				g_KBMInput.SetCursorHiddenForUI(false);
+				g_KBMInput.SetKBMActive(true);
+			}
+		}
 		PIXBeginNamedEvent(0,"Profile manager tick");
 		//		ProfileManager.Tick();
 		PIXEndNamedEvent();
@@ -1209,8 +1357,10 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 		PIXEndNamedEvent();
 
 		PIXBeginNamedEvent(0,"Network manager do work #1");
-		//		g_NetworkManager.DoWork();
+		g_NetworkManager.DoWork();
 		PIXEndNamedEvent();
+
+		TickDiscord();
 
 		//		LeaderboardManager::Instance()->Tick();
 		// Render game graphics.

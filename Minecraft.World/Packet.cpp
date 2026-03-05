@@ -142,36 +142,6 @@ void Packet::staticCtor()
 	//map(253, true, false, ServerAuthDataPacket.class);
 	map(254, false, true, false, false, typeid(GetInfoPacket), GetInfoPacket::create); // TODO New for 1.8.2 - Needs sendToAny?
 	map(255, true, true, true, false, typeid(DisconnectPacket), DisconnectPacket::create);
-
-#ifdef _WINDOWS64
-	// P2P Routing Modes: Mark movement/visual packets as P2P-eligible
-	// These packets are safe for direct peer delivery (visual only, no game state)
-
-	// Player movement - high frequency, latency-sensitive
-	SetRoutingMode(10, ROUTING_PREFER_DIRECT);	// MovePlayerPacket
-	SetRoutingMode(11, ROUTING_PREFER_DIRECT);	// MovePlayerPacket::Pos
-	SetRoutingMode(12, ROUTING_PREFER_DIRECT);	// MovePlayerPacket::Rot
-	SetRoutingMode(13, ROUTING_PREFER_DIRECT);	// MovePlayerPacket::PosRot
-
-	// Entity movement - visual interpolation
-	SetRoutingMode(30, ROUTING_PREFER_DIRECT);	// MoveEntityPacket
-	SetRoutingMode(31, ROUTING_PREFER_DIRECT);	// MoveEntityPacket::Pos
-	SetRoutingMode(32, ROUTING_PREFER_DIRECT);	// MoveEntityPacket::Rot
-	SetRoutingMode(33, ROUTING_PREFER_DIRECT);	// MoveEntityPacket::PosRot
-	SetRoutingMode(162, ROUTING_PREFER_DIRECT);	// MoveEntityPacketSmall
-	SetRoutingMode(163, ROUTING_PREFER_DIRECT);	// MoveEntityPacketSmall::Pos
-	SetRoutingMode(164, ROUTING_PREFER_DIRECT);	// MoveEntityPacketSmall::Rot
-	SetRoutingMode(165, ROUTING_PREFER_DIRECT);	// MoveEntityPacketSmall::PosRot
-
-	// Animations and visual effects
-	SetRoutingMode(18, ROUTING_PREFER_DIRECT);	// AnimatePacket
-	SetRoutingMode(35, ROUTING_PREFER_DIRECT);	// RotateHeadPacket
-
-	// Non-critical audio
-	SetRoutingMode(62, ROUTING_PREFER_DIRECT);	// LevelSoundPacket
-
-	// All other packets default to ROUTING_HOST_ONLY (game state, inventory, spawns, etc.)
-#endif
 }
 
 IllegalArgumentException::IllegalArgumentException(const wstring& information)
@@ -194,21 +164,6 @@ unordered_map<int, packetCreateFn> Packet::idToCreateMap;
 unordered_set<int> Packet::clientReceivedPackets = unordered_set<int>();
 unordered_set<int> Packet::serverReceivedPackets = unordered_set<int>();
 unordered_set<int> Packet::sendToAnyClientPackets = unordered_set<int>();
-
-unordered_map<int, EPacketRoutingMode> Packet::packetRoutingModes = unordered_map<int, EPacketRoutingMode>();
-
-EPacketRoutingMode Packet::GetRoutingMode(int packetId)
-{
-	auto it = packetRoutingModes.find(packetId);
-	if (it != packetRoutingModes.end())
-		return it->second;
-	return ROUTING_HOST_ONLY;  // Default: everything goes through host
-}
-
-void Packet::SetRoutingMode(int packetId, EPacketRoutingMode mode)
-{
-	packetRoutingModes[packetId] = mode;
-}
 
 // 4J Added
 unordered_map<int, Packet::PacketStatistics *> Packet::outgoingStatistics = unordered_map<int, Packet::PacketStatistics *>();

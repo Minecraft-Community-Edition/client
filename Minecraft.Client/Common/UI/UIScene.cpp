@@ -1164,7 +1164,7 @@ void UIScene::externalCallback(IggyExternalFunctionCallUTF16 * call)
 
 void UIScene::registerSubstitutionTexture(const wstring &textureName, PBYTE pbData, DWORD dwLength, bool deleteData)
 {
-	m_registeredTextures[textureName] = deleteData;;
+	m_registeredTextures[textureName] = deleteData;
 	ui.registerSubstitutionTexture(textureName, pbData, dwLength);
 }
 

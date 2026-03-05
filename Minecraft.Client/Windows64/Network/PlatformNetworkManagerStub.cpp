@@ -313,6 +313,12 @@ void CPlatformNetworkManagerStub::HandleSignInChange()
 	return;	
 }
 
+void CPlatformNetworkManagerStub::SetGamePlayState()
+{
+	extern QNET_STATE _iQNetStubState;
+	_iQNetStubState = QNET_STATE_GAME_PLAY;
+}
+
 bool CPlatformNetworkManagerStub::_RunNetworkGame()
 {
 	return true;

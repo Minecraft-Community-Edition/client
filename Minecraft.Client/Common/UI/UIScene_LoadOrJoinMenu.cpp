@@ -2,11 +2,6 @@
 #include "UI.h"
 #include "UIScene_LoadOrJoinMenu.h"
 
-#ifdef _WINDOWS64
-#include "..\Network\P2PConnectionManager.h"
-#include "..\Network\GameNetworkManager.h"
-#endif
-
 #include "..\..\..\Minecraft.World\StringHelpers.h"
 #include "..\..\..\Minecraft.World\net.minecraft.world.item.h"
 #include "..\..\..\Minecraft.World\net.minecraft.world.level.h"
@@ -288,13 +283,8 @@ UIScene_LoadOrJoinMenu::~UIScene_LoadOrJoinMenu()
     g_NetworkManager.SetSessionsUpdatedCallback( NULL, NULL );
     app.SetLiveLinkRequired( false );
 
-    if(m_currentSessions)
-    {
-        for(AUTO_VAR(it, m_currentSessions->begin()); it < m_currentSessions->end(); ++it)
-        {
-            delete (*it);
-        }
-    }
+    delete m_currentSessions;
+    m_currentSessions = NULL;
 
 #if TO_BE_IMPLEMENTED
     // Reset the background downloading, in case we changed it by attempting to download a texture pack
@@ -1739,24 +1729,6 @@ void UIScene_LoadOrJoinMenu::UpdateGamesList()
                 }
             }
 
-#ifdef _WINDOWS64
-			if (g_NetworkManager.IsP2PActive() && g_NetworkManager.IsInGameplay())
-			{
-				int directPeers = g_NetworkManager.GetP2PManager()->GetDirectPeerCount();
-				int totalOnline = g_NetworkManager.GetOnlinePlayerCount();
-				if (directPeers > 0 && totalOnline > 1)
-				{
-					wchar_t labelWithP2P[256];
-					swprintf_s(labelWithP2P, 256, L"%s [P2P:%d/%d]", sessionInfo->displayLabel, directPeers, totalOnline - 1);
-					m_buttonListGames.addItem(labelWithP2P, textureName);
-				}
-				else
-				{
-					m_buttonListGames.addItem(sessionInfo->displayLabel, textureName);
-				}
-			}
-			else
-#endif
             m_buttonListGames.addItem( sessionInfo->displayLabel, textureName );
 
             if(memcmp( &selectedSessionId, &sessionInfo->sessionId, sizeof(SessionID) ) == 0)

@@ -331,6 +331,12 @@ void LocalPlayer::aiStep()
 		}
 	}
 	if (isSneaking()) sprintTriggerTime = 0;
+
+	if (input->sprinting && !isSprinting() && enoughFoodToSprint && !isUsingItem() && !hasEffect(MobEffect::blindness) && input->ya >= runTreshold)
+	{
+		setSprinting(true);
+	}
+
 	// 4J-PB - try not stopping sprint on collision
 	//if (isSprinting() && (input->ya < runTreshold || horizontalCollision || !enoughFoodToSprint))
 	if (isSprinting() && (input->ya < runTreshold || !enoughFoodToSprint))
@@ -480,7 +486,10 @@ void LocalPlayer::aiStep()
 	// Check if the player is idle and the rich presence needs updated
 	if( !m_bIsIdle && InputManager.GetIdleSeconds( m_iPad ) > PLAYER_IDLE_TIME )
 	{
-		ProfileManager.SetCurrentGameActivity(m_iPad,CONTEXT_PRESENCE_IDLE,false);
+		#ifdef _WINDOWS64
+		if (!g_NetworkManager.s_pPlatformNetworkManager->IsInSession())
+#endif
+    ProfileManager.SetCurrentGameActivity(m_iPad, CONTEXT_PRESENCE_IDLE, false);
 		m_bIsIdle = true;
 	}
 	else if ( m_bIsIdle && InputManager.GetIdleSeconds( m_iPad ) < PLAYER_IDLE_TIME )

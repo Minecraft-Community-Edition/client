@@ -55,6 +55,7 @@ public:
 	virtual void HandleSignInChange();
 
 	virtual bool _RunNetworkGame();
+	virtual void SetGamePlayState();
 	
 private:
 	bool isSystemPrimaryPlayer(IQNetPlayer *pQNetPlayer);

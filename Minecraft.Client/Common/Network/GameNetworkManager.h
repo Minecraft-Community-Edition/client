@@ -15,11 +15,6 @@ using namespace std;
 #endif
 #include "SessionInfo.h"
 
-#ifdef _WINDOWS64
-#include "P2PConnectionManager.h"
-#include "PacketRouter.h"
-#endif
-
 #ifdef __ORBIS__
 #include "..\..\Orbis\Network\PsPlusUpsellWrapper_Orbis.h"
 #endif
@@ -164,17 +159,6 @@ public:
 	void renderQueueMeter();
 	wstring GatherRTTStats();
 
-#ifdef _WINDOWS64
-	void InitializeP2PConnections();
-	void EstablishP2PMesh();
-	void TeardownP2PMesh();
-	void TickP2P();
-	IP2PConnectionManager* GetP2PManager() { return m_p2pManager; }
-	EP2PConnectionState GetP2PConnectionState(INetworkPlayer* player);
-	bool IsP2PActive() { return m_p2pManager != NULL; }
-	wstring GatherP2PStats();
-#endif
-
 	// GUI debug output
 
 	// Used for debugging output
@@ -217,21 +201,20 @@ private:
 	C4JThread::Event*	m_hServerReadyEvent;
 	bool m_bInitialised;
 
+public:
+	static CPlatformNetworkManager *s_pPlatformNetworkManager;
+
 #ifdef _XBOX_ONE
 public:
 	void SetFullSessionMessageOnNextSessionChange() { m_bFullSessionMessageOnNextSessionChange = true; }
 #endif
 private:
 	float m_lastPlayerEventTimeStart;			// For telemetry
-	static CPlatformNetworkManager *s_pPlatformNetworkManager;
+	
 	bool			m_bNetworkThreadRunning;
 	int GetJoiningReadyPercentage();
 	bool m_bLastDisconnectWasLostRoomOnly;
 	bool m_bFullSessionMessageOnNextSessionChange;
-
-#ifdef _WINDOWS64
-	IP2PConnectionManager* m_p2pManager;
-#endif
 #if defined __PS3__ || defined __PSVITA__ || defined __ORBIS__
 	bool m_bSignedOutofPSN;
 #endif

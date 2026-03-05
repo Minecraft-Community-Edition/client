@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "Extrax64Stubs.h"
 #ifndef __PS3__
 //#include <compressapi.h>
 #endif // __PS3__
@@ -40,6 +41,7 @@
 #ifdef _WINDOWS64
 #include "discord_game_sdk.h"
 #pragma comment(lib, "discord_game_sdk.dll.lib")
+#include "Windows64\Network\WinsockNetLayer.h"
 #endif
 
 #ifndef E_FAIL
@@ -72,6 +74,90 @@ VOID ATG::XMLParser::RegisterSAXCallbackInterface( ISAXCallback *pISAXCallback )
 static char s_discordUsername[32] = "";
 static ULONGLONG s_discordXuid = 0;
 static struct IDiscordCore *discordCore = NULL;
+static char s_DiscordJoinSecret[64] = "";
+static IDiscordActivityEvents s_ActivityEvents;
+
+
+void TickDiscord()
+{
+	if(discordCore != NULL)
+		discordCore->run_callbacks(discordCore);
+}
+
+static char s_pendingJoinIP[64] = "";
+static int s_pendingJoinPort = 0;
+static bool s_hasPendingJoin = false;
+
+
+
+static void OnActivityJoin(void* event_data, const char* join_secret)
+{
+	printf("Discord OnActivityJoin: secret=%s\n", join_secret);
+
+    char secret[64];
+    strncpy_s(secret, sizeof(secret), join_secret, _TRUNCATE);
+    char* colon = strchr(secret, ':');
+    if (colon != NULL)
+    {
+        *colon = '\0';
+        strncpy_s(s_pendingJoinIP, sizeof(s_pendingJoinIP), secret, _TRUNCATE);
+        s_pendingJoinPort = atoi(colon + 1);
+
+		FriendSessionInfo info;
+memset(&info, 0, sizeof(info));
+strncpy_s(info.data.hostIP, sizeof(info.data.hostIP), s_pendingJoinIP, _TRUNCATE);
+info.data.hostPort = s_pendingJoinPort;
+info.data.isJoinable = true;
+info.data.isReadyToJoin = true;
+
+// Allocate displayLabel on heap so the destructor can safely free it
+static const wchar_t* label = L"Discord Invite";
+size_t labelLen = wcslen(label);
+info.displayLabel = new wchar_t[labelLen + 1];
+wcscpy_s(info.displayLabel, labelLen + 1, label);
+info.displayLabelLength = (unsigned char)labelLen;
+
+
+
+    g_NetworkManager.s_pPlatformNetworkManager->JoinGame(&info, 1,0);
+    }
+}
+
+static void OnActivityInvite(void* event_data, enum EDiscordActivityActionType type, struct DiscordUser* user, struct DiscordActivity* activity)
+{
+	printf("Discord OnActivityInvite from user: %s\n", user->username);
+
+	struct IDiscordActivityManager* am = discordCore->get_activity_manager(discordCore);
+	if (am != NULL)
+	{
+		static int s_dummy = 0;
+		am->accept_invite(am, user->id, &s_dummy,
+			[](void* data, enum EDiscordResult result)
+			{
+				printf("accept_invite result: %d\n", result);
+			});
+	}
+}
+
+static void OnActivityJoinRequest(void* event_data, struct DiscordUser* user)
+{
+	printf("Discord join request from: %s\n", user->username);
+
+	struct IDiscordActivityManager* am = discordCore->get_activity_manager(discordCore);
+	if(am != NULL)
+	{
+		static int s_dummy = 0;
+	}
+}
+
+void Discord_SetJoinSecret(const char* hostIp, WORD port)
+{
+	printf("Discord_SetJoinSecret called!\n");
+	sprintf_s(s_DiscordJoinSecret, sizeof(s_DiscordJoinSecret), "%s:%u", hostIp, (unsigned)port);
+
+	ProfileManager.SetCurrentGameActivity(0,4,false);
+}
+
 
 static void InitDiscordCore()
 {
@@ -80,19 +166,31 @@ static void InitDiscordCore()
 	static IDiscordCoreEvents coreEvents;
 	memset(&coreEvents, 0, sizeof(coreEvents));
 
+	memset(&s_ActivityEvents, 0, sizeof(s_ActivityEvents));
+	s_ActivityEvents.on_activity_join = OnActivityJoin;
+	s_ActivityEvents.on_activity_invite = OnActivityInvite;
+	s_ActivityEvents.on_activity_join_request = OnActivityJoinRequest;
+
+
 	struct DiscordCreateParams params;
 	DiscordCreateParamsSetDefault(&params);
 	params.client_id = 1477855587978182828LL;
 	params.flags = DiscordCreateFlags_NoRequireDiscord;
 	params.events = &coreEvents;
 	params.event_data = NULL;
+	params.activity_events = &s_ActivityEvents;
 
 	enum EDiscordResult result = DiscordCreate(DISCORD_VERSION, &params, &discordCore);
 	if(result != DiscordResult_Ok)
 	{
 		printf("DiscordCreate failed: %d\n", result);
 		discordCore = NULL;
+		return;
 	}
+
+	struct IDiscordActivityManager* am = discordCore->get_activity_manager(discordCore);
+	if (am != NULL)
+		am->register_command(am, "Minecraft.exe");
 }
 
 static ULONGLONG DiscordIdToXuid(DiscordSnowflake discordId)
@@ -108,9 +206,6 @@ static void InitDiscordIdentity()
 
 	for(int i = 0; i < 100; ++i)
 	{
-		discordCore->run_callbacks(discordCore);
-		Sleep(10);
-
 		struct IDiscordUserManager *userManager = discordCore->get_user_manager(discordCore);
 		if(userManager != NULL)
 		{
@@ -256,7 +351,7 @@ void PIXSetMarkerDeprecated(int a, char *b, ...) {}
 
 bool IsEqualXUID(PlayerUID a, PlayerUID b)
 {
-#if defined(__PS3__) || defined(__ORBIS__) || defined (__PSVITA__) || defined(_DURANGO)
+#if defined(__PS3__) || defined(__ORBIS__) || defined (__PSVITA__) || defined(_DURANGO) || defined(_WINDOWS64)
 	return (a == b);
 #else
 	return false;
@@ -279,33 +374,6 @@ namespace
 	ULONGLONG s_stubXuidBase = 0;
 	char s_stubGamertagA[XUSER_MAX_COUNT][32];
 	wchar_t s_stubGamertagW[XUSER_MAX_COUNT][32];
-
-	DWORD StubSupportedLocalUserMask()
-	{
-		DWORD mask = 0;
-		for(unsigned int i = 0; i < XUSER_MAX_COUNT && i < 32; ++i)
-		{
-			mask |= (1u << i);
-		}
-		return mask;
-	}
-
-	bool StubSupportsLocalUser(DWORD userIndex)
-	{
-		return userIndex < XUSER_MAX_COUNT;
-	}
-
-	DWORD StubClampLocalUserMask(DWORD usersMask)
-	{
-		DWORD clampedMask = usersMask & StubSupportedLocalUserMask();
-		if(clampedMask == 0)
-		{
-			clampedMask = (1u << 0);
-		}
-		return clampedMask;
-	}
-
-
 
 	void EnsureStubIdentity()
 	{
@@ -347,11 +415,7 @@ namespace
 			}
 			else
 			{
-#ifdef _WINDOWS64
 				sprintf_s(s_stubGamertagA[i], sizeof(s_stubGamertagA[i]), "Player%u-%u", pid % 10000, i);
-#else
-				snprintf(s_stubGamertagA[i], sizeof(s_stubGamertagA[i]), "Player%u-%u", pid % 10000, i);
-#endif
 			}
 		}
 
@@ -365,70 +429,36 @@ namespace
 	}
 }
 
-extern bool _bQNetStubIsHost;
-BYTE IQNetPlayer::GetSmallId()
-{
-	int idx = (int)(this - &IQNet::m_player[0]);
-	if(idx < 0 || idx >= (int)XUSER_MAX_COUNT)
-	{
-		return 0;
-	}
-	if(!_bQNetStubIsHost)
-	{
-		// When acting as a client, reserve small id 0 for the remote host.
-		return (BYTE)(idx + 1);
-	}
-	return (BYTE)idx;
-}
+QNET_STATE _iQNetStubState = QNET_STATE_IDLE;
+
+BYTE IQNetPlayer::GetSmallId() { return m_smallId; }
 void IQNetPlayer::SendData(IQNetPlayer *player, const void *pvData, DWORD dwDataSize, DWORD dwFlags)
 {
-	app.DebugPrintf("Sending from 0x%x to 0x%x %d bytes\n",this,player,dwDataSize);
-}
-bool IQNetPlayer::IsSameSystem(IQNetPlayer *player)
-{
-	if(player == NULL)
+	if (WinsockNetLayer::IsActive())
 	{
-		return false;
+		WinsockNetLayer::SendToSmallId(player->m_smallId, pvData, dwDataSize);
 	}
-
-	ULONG_PTR ptr = (ULONG_PTR)player;
-	ULONG_PTR begin = (ULONG_PTR)&IQNet::m_player[0];
-	ULONG_PTR end = (ULONG_PTR)&IQNet::m_player[XUSER_MAX_COUNT];
-	return (ptr >= begin && ptr < end);
 }
+bool IQNetPlayer::IsSameSystem(IQNetPlayer *player) { return (this == player) || (!m_isRemote && !player->m_isRemote); }
 DWORD IQNetPlayer::GetSendQueueSize( IQNetPlayer *player, DWORD dwFlags ) { return 0; }
 DWORD IQNetPlayer::GetCurrentRtt() { return 0; }
-extern bool _bQNetStubIsHost;
-bool IQNetPlayer::IsHost() { return _bQNetStubIsHost && this == &IQNet::m_player[0]; }
+bool IQNetPlayer::IsHost() { return m_isHostPlayer; }
 bool IQNetPlayer::IsGuest() { return false; }
-bool IQNetPlayer::IsLocal() { return true; }
+bool IQNetPlayer::IsLocal() { return !m_isRemote; }
 PlayerUID IQNetPlayer::GetXuid()
 {
-	EnsureStubIdentity();
-	int idx = (int)(this - &IQNet::m_player[0]);
-	if(idx < 0 || idx >= (int)XUSER_MAX_COUNT)
+	// For the local player (smallId 0 on host, or the assigned smallId on client),
+	// try Discord XUID first for richer identity
+	if (!m_isRemote)
 	{
-		idx = 0;
+		EnsureStubIdentity();
+		if (s_discordXuid != 0)
+			return s_discordXuid | 0x100000000ULL;
 	}
-#if defined(__PS3__) || defined(__ORBIS__) || defined(__PSVITA__)
-	PlayerUID uid;
-	uid.setUserID(0x70000000u | (unsigned int)(idx & 0xFF));
-	return uid;
-#else
-	return (s_stubXuidBase + (ULONGLONG)(idx & 0x0F)) | 0x100000000ULL;
-#endif
+	return (PlayerUID)(0xe000d45248242f2e + m_smallId);
 }
-LPCWSTR IQNetPlayer::GetGamertag()
-{
-	EnsureStubIdentity();
-	int idx = (int)(this - &IQNet::m_player[0]);
-	if(idx < 0 || idx >= (int)XUSER_MAX_COUNT)
-	{
-		idx = 0;
-	}
-	return s_stubGamertagW[idx];
-}
-int IQNetPlayer::GetSessionIndex() { return GetSmallId(); }
+LPCWSTR IQNetPlayer::GetGamertag() { return m_gamertag; }
+int IQNetPlayer::GetSessionIndex() { return m_smallId; }
 bool IQNetPlayer::IsTalking() { return false; }
 bool IQNetPlayer::IsMutedByLocalUser(DWORD dwUserIndex) { return false; }
 bool IQNetPlayer::HasVoice() { return false; }
@@ -441,156 +471,118 @@ ULONG_PTR IQNetPlayer::GetCustomDataValue() {
 	return m_customData;
 }
 
-IQNetPlayer IQNet::m_player[4];
+IQNetPlayer IQNet::m_player[MINECRAFT_NET_MAX_PLAYERS];
+DWORD IQNet::s_playerCount = 1;
+bool IQNet::s_isHosting = true;
 
-bool _bQNetStubGameRunning = false;
-bool _bQNetStubIsHost = true;
-DWORD _dwQNetStubLocalUsersMask = (1u << 0);
-
-HRESULT IQNet::AddLocalPlayerByUserIndex(DWORD dwUserIndex)
+void Win64_SetupRemoteQNetPlayer(IQNetPlayer *player, BYTE smallId, bool isHost, bool isLocal)
 {
-	if(!StubSupportsLocalUser(dwUserIndex))
-	{
-		return E_FAIL;
-	}
-
-	_dwQNetStubLocalUsersMask |= (1u << dwUserIndex);
-	return S_OK;
+	player->m_smallId = smallId;
+	player->m_isRemote = !isLocal;
+	player->m_isHostPlayer = isHost;
+	swprintf_s(player->m_gamertag, 32, L"Player%d", smallId);
+	if (smallId >= IQNet::s_playerCount)
+		IQNet::s_playerCount = smallId + 1;
 }
+
+static bool Win64_IsActivePlayer(IQNetPlayer *p, DWORD index)
+{
+	if (index == 0) return true;
+	return (p->GetCustomDataValue() != 0);
+}
+
+HRESULT IQNet::AddLocalPlayerByUserIndex(DWORD dwUserIndex){ return S_OK; }
 IQNetPlayer *IQNet::GetHostPlayer() { return &m_player[0]; }
 IQNetPlayer *IQNet::GetLocalPlayerByUserIndex(DWORD dwUserIndex)
 {
-	if(!StubSupportsLocalUser(dwUserIndex))
+	if (s_isHosting)
 	{
+		if (dwUserIndex < MINECRAFT_NET_MAX_PLAYERS &&
+			!m_player[dwUserIndex].m_isRemote &&
+			Win64_IsActivePlayer(&m_player[dwUserIndex], dwUserIndex))
+			return &m_player[dwUserIndex];
 		return NULL;
 	}
-
-	return (_dwQNetStubLocalUsersMask & (1u << dwUserIndex)) ? &m_player[dwUserIndex] : NULL;
+	if (dwUserIndex != 0)
+		return NULL;
+	for (DWORD i = 0; i < s_playerCount; i++)
+	{
+		if (!m_player[i].m_isRemote && Win64_IsActivePlayer(&m_player[i], i))
+			return &m_player[i];
+	}
+	return NULL;
 }
 IQNetPlayer *IQNet::GetPlayerByIndex(DWORD dwPlayerIndex)
 {
-	if(!_bQNetStubGameRunning)
+	DWORD found = 0;
+	for (DWORD i = 0; i < s_playerCount; i++)
 	{
-		return NULL;
-	}
-
-	DWORD currentIndex = 0;
-	for(DWORD localUser = 0; localUser < XUSER_MAX_COUNT; ++localUser)
-	{
-		if((_dwQNetStubLocalUsersMask & (1u << localUser)) == 0)
+		if (Win64_IsActivePlayer(&m_player[i], i))
 		{
-			continue;
+			if (found == dwPlayerIndex) return &m_player[i];
+			found++;
 		}
-
-		if(currentIndex == dwPlayerIndex)
-		{
-			return &m_player[localUser];
-		}
-
-		++currentIndex;
 	}
-
-	return NULL;
+	return &m_player[0];
 }
 IQNetPlayer *IQNet::GetPlayerBySmallId(BYTE SmallId)
 {
-	if(!_bQNetStubGameRunning)
-	{
+	if (SmallId >= MINECRAFT_NET_MAX_PLAYERS)
 		return NULL;
-	}
 
-	for(DWORD localUser = 0; localUser < XUSER_MAX_COUNT; ++localUser)
-	{
-		if((_dwQNetStubLocalUsersMask & (1u << localUser)) == 0)
-		{
-			continue;
-		}
-
-		if(m_player[localUser].GetSmallId() == SmallId)
-		{
-			return &m_player[localUser];
-		}
-	}
-
-	return NULL;
+	m_player[SmallId].m_smallId = SmallId;
+	if (SmallId >= s_playerCount)
+		s_playerCount = SmallId + 1;
+	return &m_player[SmallId];
 }
 IQNetPlayer *IQNet::GetPlayerByXuid(PlayerUID xuid)
 {
-	if(!_bQNetStubGameRunning)
+	for (DWORD i = 0; i < MINECRAFT_NET_MAX_PLAYERS; i++)
 	{
-		return NULL;
+		if (Win64_IsActivePlayer(&m_player[i], i) && m_player[i].GetXuid() == xuid) return &m_player[i];
 	}
-
-	for(DWORD localUser = 0; localUser < XUSER_MAX_COUNT; ++localUser)
-	{
-		if((_dwQNetStubLocalUsersMask & (1u << localUser)) == 0)
-		{
-			continue;
-		}
-
-		IQNetPlayer *localPlayer = &m_player[localUser];
-		PlayerUID localXuidOnline = localPlayer->GetXuid();
-#if defined(__PS3__) || defined(__ORBIS__) || defined(__PSVITA__) || defined(_DURANGO)
-		if(xuid == localXuidOnline)
-		{
-			return localPlayer;
-		}
-#else
-		PlayerUID localXuidOffline = localXuidOnline & ~0x100000000ULL;
-		if(xuid == localXuidOnline || xuid == localXuidOffline)
-		{
-			return localPlayer;
-		}
-#endif
-	}
-
 	return NULL;
 }
 DWORD IQNet::GetPlayerCount()
 {
-	if(!_bQNetStubGameRunning)
-	{
-		return 0;
-	}
-
 	DWORD count = 0;
-	for(DWORD localUser = 0; localUser < XUSER_MAX_COUNT; ++localUser)
+	for (DWORD i = 0; i < s_playerCount; i++)
 	{
-		if(_dwQNetStubLocalUsersMask & (1u << localUser))
-		{
-			++count;
-		}
+		if (Win64_IsActivePlayer(&m_player[i], i)) count++;
 	}
-
 	return count;
 }
-QNET_STATE IQNet::GetState() { return _bQNetStubGameRunning ? QNET_STATE_GAME_PLAY : QNET_STATE_IDLE; }
-bool IQNet::IsHost() { return _bQNetStubIsHost; }
-HRESULT IQNet::JoinGameFromInviteInfo(DWORD dwUserIndex, DWORD dwUserMask, const INVITE_INFO *pInviteInfo)
+QNET_STATE IQNet::GetState() { return _iQNetStubState; }
+bool IQNet::IsHost() { return s_isHosting; }
+HRESULT IQNet::JoinGameFromInviteInfo(DWORD dwUserIndex, DWORD dwUserMask, const INVITE_INFO *pInviteInfo) { return S_OK; }
+void IQNet::HostGame() { _iQNetStubState = QNET_STATE_SESSION_STARTING; s_isHosting = true; }
+void IQNet::ClientJoinGame()
 {
-	UNREFERENCED_PARAMETER(dwUserIndex);
-	UNREFERENCED_PARAMETER(pInviteInfo);
-	_bQNetStubIsHost = false;
-	_bQNetStubGameRunning = true;
-	_dwQNetStubLocalUsersMask = StubClampLocalUserMask(dwUserMask);
-	if(StubSupportsLocalUser(dwUserIndex))
+	_iQNetStubState = QNET_STATE_SESSION_STARTING;
+	s_isHosting = false;
+
+	for (int i = 0; i < MINECRAFT_NET_MAX_PLAYERS; i++)
 	{
-		_dwQNetStubLocalUsersMask |= (1u << dwUserIndex);
+		m_player[i].m_smallId = (BYTE)i;
+		m_player[i].m_isRemote = true;
+		m_player[i].m_isHostPlayer = false;
+		m_player[i].m_gamertag[0] = 0;
+		m_player[i].SetCustomDataValue(0);
 	}
-	_dwQNetStubLocalUsersMask = StubClampLocalUserMask(_dwQNetStubLocalUsersMask);
-	return S_OK;
-}
-void IQNet::HostGame()
-{
-	_bQNetStubIsHost = true;
-	_bQNetStubGameRunning = true;
-	_dwQNetStubLocalUsersMask = (1u << 0);
 }
 void IQNet::EndGame()
 {
-	_bQNetStubGameRunning = false;
-	_bQNetStubIsHost = true;
-	_dwQNetStubLocalUsersMask = (1u << 0);
+	_iQNetStubState = QNET_STATE_IDLE;
+	s_isHosting = false;
+	s_playerCount = 1;
+	for (int i = 0; i < MINECRAFT_NET_MAX_PLAYERS; i++)
+	{
+		m_player[i].m_smallId = (BYTE)i;
+		m_player[i].m_isRemote = false;
+		m_player[i].m_isHostPlayer = false;
+		m_player[i].m_gamertag[0] = 0;
+		m_player[i].SetCustomDataValue(0);
+	}
 }
 
 DWORD MinecraftDynamicConfigurations::GetTrialTime() { return DYNAMIC_CONFIG_DEFAULT_TRIAL_TIME; }
@@ -766,7 +758,6 @@ DWORD XEnableGuestSignin(BOOL fEnable) { return 0; }
 #ifdef _WINDOWS64
 static void *profileData[4];
 static bool s_bProfileIsFullVersion;
-static int s_iPrimaryPad = 0;
 void				C_4JProfile::Initialise( DWORD dwTitleID,
 											DWORD dwOfferID,
 											unsigned short usProfileVersion,
@@ -836,21 +827,8 @@ void				C_4JProfile::SetTrialTextStringTable(CXuiStringTable *pStringTable,int i
 void				C_4JProfile::SetTrialAwardText(eAwardType AwardType,int iTitle,int iText) {}
 int					C_4JProfile::GetLockedProfile() { return 0; }
 void				C_4JProfile::SetLockedProfile(int iProf) {}
-bool				C_4JProfile::IsSignedIn(int iQuadrant)
-{
-	if(iQuadrant < 0 || iQuadrant >= (int)XUSER_MAX_COUNT)
-	{
-		return false;
-	}
-
-	if(iQuadrant == 0)
-	{
-		return true;
-	}
-
-	return InputManager.IsPadConnected(iQuadrant);
-}
-bool				C_4JProfile::IsSignedInLive(int iProf) { return IsSignedIn(iProf); }
+bool				C_4JProfile::IsSignedIn(int iQuadrant) { return ( iQuadrant == 0); }
+bool				C_4JProfile::IsSignedInLive(int iProf) { return true; }
 bool				C_4JProfile::IsGuest(int iQuadrant) { return false; }
 UINT				C_4JProfile::RequestSignInUI(bool bFromInvite,bool bLocalGame,bool bNoGuestsAllowed,bool bMultiplayerSignIn,bool bAddUser, int( *Func)(LPVOID,const bool, const int iPad),LPVOID lpParam,int iQuadrant) { return 0; }
 UINT				C_4JProfile::DisplayOfflineProfile(int( *Func)(LPVOID,const bool, const int iPad),LPVOID lpParam,int iQuadrant)  { return 0; }
@@ -859,18 +837,23 @@ void				C_4JProfile::SetPrimaryPlayerChanged(bool bVal) {}
 bool				C_4JProfile::QuerySigninStatus(void) { return true; }
 void				C_4JProfile::GetXUID(int iPad, PlayerUID *pXuid,bool bOnlineXuid)
 {
-	EnsureStubIdentity();
 	if(pXuid == NULL)
 	{
 		return;
 	}
-
-	ULONGLONG value = s_stubXuidBase + (ULONGLONG)(iPad & 0x0F);
-	if(bOnlineXuid)
+#ifdef _WINDOWS64
+	if (iPad != 0)
 	{
-		value |= 0x100000000ULL;
+		*pXuid = INVALID_XUID;
+		return;
 	}
-	*pXuid = value;
+	if (IQNet::s_isHosting)
+		*pXuid = 0xe000d45248242f2e;
+	else
+		*pXuid = 0xe000d45248242f2e + WinsockNetLayer::GetLocalSmallId();
+#else
+	*pXuid = 0xe000d45248242f2e + iPad;
+#endif
 }
 BOOL				C_4JProfile::AreXUIDSEqual(PlayerUID xuid1,PlayerUID xuid2) { return xuid1 == xuid2; }
 BOOL				C_4JProfile::XUIDIsGuest(PlayerUID xuid) { return false; }
@@ -891,45 +874,17 @@ void				C_4JProfile::AllowedPlayerCreatedContent(int iPad, bool thisQuadrantOnly
 BOOL				C_4JProfile::CanViewPlayerCreatedContent(int iPad, bool thisQuadrantOnly, PPlayerUID pXuids, DWORD dwXuidCount ) { return true; }
 bool				C_4JProfile::GetProfileAvatar(int iPad,int( *Func)(LPVOID lpParam,PBYTE pbThumbnail,DWORD dwThumbnailBytes), LPVOID lpParam) { return false; }
 void				C_4JProfile::CancelProfileAvatarRequest() {}
-int					C_4JProfile::GetPrimaryPad() { return s_iPrimaryPad; }
-void				C_4JProfile::SetPrimaryPad(int iPad)
-{
-	if(iPad >= 0 && iPad < (int)XUSER_MAX_COUNT && IsSignedIn(iPad))
-	{
-		s_iPrimaryPad = iPad;
-	}
-	else
-	{
-		s_iPrimaryPad = 0;
-	}
-}
+int					C_4JProfile::GetPrimaryPad() { return 0; }
+void				C_4JProfile::SetPrimaryPad(int iPad) {}
 #ifdef _DURANGO
 char fakeGamerTag[32] = "PlayerName";
 void				SetFakeGamertag(char *name){ strcpy_s(fakeGamerTag, name); }
 char*				C_4JProfile::GetGamertag(int iPad){ return fakeGamerTag; }
 #else
-char*				C_4JProfile::GetGamertag(int iPad)
-{
-	EnsureStubIdentity();
-	if(iPad < 0 || iPad >= (int)XUSER_MAX_COUNT)
-	{
-		iPad = 0;
-	}
-	return s_stubGamertagA[iPad];
-}
-wstring				C_4JProfile::GetDisplayName(int iPad)
-{
-	EnsureStubIdentity();
-	if(iPad < 0 || iPad >= (int)XUSER_MAX_COUNT)
-	{
-		iPad = 0;
-	}
-	wchar_t displayName[32];
-	swprintf(displayName, 32, L"%S", s_stubGamertagA[iPad]);
-	return displayName;
-}
+char*				C_4JProfile::GetGamertag(int iPad){ extern char g_Win64Username[17]; return g_Win64Username; }
+wstring				C_4JProfile::GetDisplayName(int iPad){ extern wchar_t g_Win64UsernameW[17]; return g_Win64UsernameW; }
 #endif
-bool				C_4JProfile::IsFullVersion() { return true; }
+bool				C_4JProfile::IsFullVersion() { return s_bProfileIsFullVersion; }
 void				C_4JProfile::SetSignInChangeCallback(void ( *Func)(LPVOID, bool, unsigned int),LPVOID lpParam) {}
 void				C_4JProfile::SetNotificationsCallback(void ( *Func)(LPVOID, DWORD, unsigned int),LPVOID lpParam) {}
 bool				C_4JProfile::RegionIsNorthAmerica(void) { return false; }
@@ -949,10 +904,6 @@ int					C_4JProfile::SetOldProfileVersionCallback(int( *Func)(LPVOID,unsigned ch
 
 // To store the dashboard preferences for controller flipped, etc.
 C_4JProfile::PROFILESETTINGS ProfileSettingsA[XUSER_MAX_COUNT];
-
-#define MAX_AWARDS 32
-
-static bool s_awardsUnlocked[XUSER_MAX_COUNT][MAX_AWARDS] = {};
 
 C_4JProfile::PROFILESETTINGS *	C_4JProfile::GetDashboardProfileSettings(int iPad) { return &ProfileSettingsA[iPad]; }
 void				C_4JProfile::WriteToProfile(int iQuadrant, bool bGameDefinedDataChanged, bool bOverride5MinuteLimitOnProfileWrites) {}
@@ -979,24 +930,9 @@ void				C_4JProfile::RegisterAward(int iAwardNumber,int iGamerconfigID, eAwardTy
 											   CXuiStringTable*pStringTable, int iTitleStr, int iTextStr, int iAcceptStr, char *pszThemeName, unsigned int ulThemeSize) {}
 int					C_4JProfile::GetAwardId(int iAwardNumber) { return 0; }
 eAwardType			C_4JProfile::GetAwardType(int iAwardNumber) { return eAwardType_Achievement; }
-bool C_4JProfile::CanBeAwarded(int iQuadrant, int iAwardNumber)
-{
-	if (iQuadrant < 0 || iQuadrant >= XUSER_MAX_COUNT) return false;
-	if (iAwardNumber < 0 || iAwardNumber >= MAX_AWARDS) return false;
-	return !s_awardsUnlocked[iQuadrant][iAwardNumber];
-}
-void C_4JProfile::Award(int iQuadrant, int iAwardNumber, bool bForce)
-{
-	if (iQuadrant < 0 || iQuadrant >= XUSER_MAX_COUNT) return;
-	if (iAwardNumber < 0 || iAwardNumber >= MAX_AWARDS) return;
-	s_awardsUnlocked[iQuadrant][iAwardNumber] = true;
-}
-bool C_4JProfile::IsAwardsFlagSet(int iQuadrant, int iAward)
-{
-	if (iQuadrant < 0 || iQuadrant >= XUSER_MAX_COUNT) return false;
-	if (iAward < 0 || iAward >= MAX_AWARDS) return false;
-	return s_awardsUnlocked[iQuadrant][iAward];
-}
+bool				C_4JProfile::CanBeAwarded(int iQuadrant, int iAwardNumber) { return false; }
+void				C_4JProfile::Award(int iQuadrant, int iAwardNumber, bool bForce) {}
+bool				C_4JProfile::IsAwardsFlagSet(int iQuadrant, int iAward) { return false; }
 void				C_4JProfile::RichPresenceInit(int iPresenceCount, int iContextCount) {}
 void				C_4JProfile::RegisterRichPresenceContext(int iGameConfigContextID) {}
 void				C_4JProfile::SetRichPresenceContextValue(int iPad,int iContextID, int iVal) {}
@@ -1030,6 +966,17 @@ void				C_4JProfile::SetCurrentGameActivity(int iPad,int iNewPresence, bool bSet
 	case 4: // In-game Online
 		strncpy_s(activity.details, sizeof(activity.details), "Playing Minecraft", _TRUNCATE);
 		strncpy_s(activity.state,   sizeof(activity.state),   "Multiplayer",       _TRUNCATE);
+
+		activity.instance = true;
+
+		sprintf_s(activity.party.id, sizeof(activity.party.id), "lce-whisper-session%lu", GetCurrentProcessId());
+		activity.party.size.current_size = (int32_t)g_NetworkManager.GetPlayerCount();
+		activity.party.size.max_size = (int32_t)MINECRAFT_NET_MAX_PLAYERS;
+
+		if (g_NetworkManager.IsHost() && s_DiscordJoinSecret[0] != '\0')
+		{
+			strncpy_s(activity.secrets.join, sizeof(activity.secrets.join), s_DiscordJoinSecret, _TRUNCATE);
+		}
 		break;
 	case 5: // In-game Singleplayer
 		strncpy_s(activity.details, sizeof(activity.details), "Playing Minecraft", _TRUNCATE);
@@ -1052,12 +999,6 @@ void				C_4JProfile::SetCurrentGameActivity(int iPad,int iNewPresence, bool bSet
 		[](void *data, enum EDiscordResult result) {
 			printf("update_activity result: %d\n", result);
 	});
-
-	for(int i = 0; i < 50; ++i)
-	{
-		discordCore->run_callbacks(discordCore);
-		Sleep(10);
-	}
 #endif
 }
 void				C_4JProfile::DisplayFullVersionPurchase(bool bRequired, int iQuadrant, int iUpsellParam) {}

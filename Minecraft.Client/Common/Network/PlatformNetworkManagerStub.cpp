@@ -1,8 +1,14 @@
-#include "stdafx.h"	
+#include "stdafx.h"
 #include "..\..\..\Minecraft.World\Socket.h"
 #include "..\..\..\Minecraft.World\StringHelpers.h"
 #include "PlatformNetworkManagerStub.h"
 #include "..\..\Xbox\Network\NetworkPlayerXbox.h"		// TODO - stub version of this?
+#ifdef _WINDOWS64
+#include "..\..\Windows64\Network\WinsockNetLayer.h"
+#include "..\..\Minecraft.h"
+#include "..\..\User.h"
+#include "Extrax64Stubs.h"
+#endif
 
 CPlatformNetworkManagerStub *g_pPlatformNetworkManager;
 
@@ -72,7 +78,7 @@ void CPlatformNetworkManagerStub::NotifyPlayerJoined(IQNetPlayer *pQNetPlayer	)
 		}
     }
 	g_NetworkManager.PlayerJoining( networkPlayer );
-	
+
 	if( createFakeSocket == true && !m_bHostChanged )
 	{
 		g_NetworkManager.CreateSocket( networkPlayer, localPlayer );
@@ -92,7 +98,7 @@ void CPlatformNetworkManagerStub::NotifyPlayerJoined(IQNetPlayer *pQNetPlayer	)
 //		g_NetworkManager.UpdateAndSetGameSessionData();
 		SystemFlagAddPlayer( networkPlayer );
 	}
-	
+
 	for( int idx = 0; idx < XUSER_MAX_COUNT; ++idx)
 	{
 		if(playerChangedCallback[idx] != NULL)
@@ -114,10 +120,42 @@ void CPlatformNetworkManagerStub::NotifyPlayerJoined(IQNetPlayer *pQNetPlayer	)
 	}
 }
 
+void CPlatformNetworkManagerStub::NotifyPlayerLeaving(IQNetPlayer *pQNetPlayer)
+{
+	app.DebugPrintf("Player 0x%p \"%ls\" leaving.\n", pQNetPlayer, pQNetPlayer->GetGamertag());
+
+	INetworkPlayer *networkPlayer = getNetworkPlayer(pQNetPlayer);
+	if (networkPlayer == NULL)
+		return;
+
+	Socket *socket = networkPlayer->GetSocket();
+	if (socket != NULL)
+	{
+		if (m_pIQNet->IsHost())
+			g_NetworkManager.CloseConnection(networkPlayer);
+	}
+
+	if (m_pIQNet->IsHost())
+	{
+		SystemFlagRemovePlayer(networkPlayer);
+	}
+
+	g_NetworkManager.PlayerLeaving(networkPlayer);
+
+	for (int idx = 0; idx < XUSER_MAX_COUNT; ++idx)
+	{
+		if (playerChangedCallback[idx] != NULL)
+			playerChangedCallback[idx](playerChangedCallbackParam[idx], networkPlayer, true);
+	}
+
+	removeNetworkPlayer(pQNetPlayer);
+}
+
 bool CPlatformNetworkManagerStub::Initialise(CGameNetworkManager *pGameNetworkManager, int flagIndexSize)
 {
 	m_pGameNetworkManager = pGameNetworkManager;
 	m_flagIndexSize = flagIndexSize;
+	m_pIQNet = new IQNet();
 	g_pPlatformNetworkManager = this;
 	for( int i = 0; i < XUSER_MAX_COUNT; i++ )
 	{
@@ -148,19 +186,12 @@ bool CPlatformNetworkManagerStub::Initialise(CGameNetworkManager *pGameNetworkMa
 		m_currentSearchResultsCount[i] = 0;
 	}
 
-#ifdef _WINDOWS64
-	m_lanSessionManager.Initialize();
-#endif
-
     // Success!
     return true;
 }
 
 void CPlatformNetworkManagerStub::Terminate()
 {
-#ifdef _WINDOWS64
-	m_lanSessionManager.Shutdown();
-#endif
 }
 
 int CPlatformNetworkManagerStub::GetJoiningReadyPercentage()
@@ -182,8 +213,61 @@ bool CPlatformNetworkManagerStub::isSystemPrimaryPlayer(IQNetPlayer *pQNetPlayer
 void CPlatformNetworkManagerStub::DoWork()
 {
 #ifdef _WINDOWS64
-	m_lanSessionManager.Tick();
-	TickSearch();
+	extern QNET_STATE _iQNetStubState;
+	if (_iQNetStubState == QNET_STATE_SESSION_STARTING && app.GetGameStarted())
+	{
+		_iQNetStubState = QNET_STATE_GAME_PLAY;
+		if (m_pIQNet->IsHost())
+		{
+			WinsockNetLayer::UpdateAdvertiseJoinable(true);
+		}
+			
+			
+	}
+	if (_iQNetStubState == QNET_STATE_IDLE)
+		TickSearch();
+	if (_iQNetStubState == QNET_STATE_GAME_PLAY && m_pIQNet->IsHost())
+	{
+		BYTE disconnectedSmallId;
+		while (WinsockNetLayer::PopDisconnectedSmallId(&disconnectedSmallId))
+		{
+			IQNetPlayer *qnetPlayer = m_pIQNet->GetPlayerBySmallId(disconnectedSmallId);
+			if (qnetPlayer != NULL && qnetPlayer->m_smallId == disconnectedSmallId)
+			{
+				NotifyPlayerLeaving(qnetPlayer);
+				qnetPlayer->m_smallId = 0;
+				qnetPlayer->m_isRemote = false;
+				qnetPlayer->m_isHostPlayer = false;
+				qnetPlayer->m_gamertag[0] = 0;
+				qnetPlayer->SetCustomDataValue(0);
+				WinsockNetLayer::PushFreeSmallId(disconnectedSmallId);
+				if (IQNet::s_playerCount > 1)
+					IQNet::s_playerCount--;
+			}
+		}
+
+		for (int i = 1; i < MINECRAFT_NET_MAX_PLAYERS; i++)
+		{
+			IQNetPlayer *qp = &IQNet::m_player[i];
+			if (qp->GetCustomDataValue() == 0)
+				continue;
+			INetworkPlayer *np = (INetworkPlayer *)qp->GetCustomDataValue();
+			Socket *sock = np->GetSocket();
+			if (sock != NULL && sock->isClosing())
+			{
+				WinsockNetLayer::CloseConnectionBySmallId((BYTE)i);
+			}
+		}
+	}
+	if (_iQNetStubState == QNET_STATE_GAME_PLAY && !m_pIQNet->IsHost())
+	{
+		if (!WinsockNetLayer::IsConnected() && !g_NetworkManager.IsLeavingGame())
+		{
+			if (app.GetDisconnectReason() == DisconnectPacket::eDisconnect_None)
+				app.SetDisconnectReason(DisconnectPacket::eDisconnect_Quitting);
+			app.SetAction(ProfileManager.GetPrimaryPad(), eAppAction_ExitWorld, (void *)TRUE);
+		}
+	}
 #endif
 }
 
@@ -244,16 +328,31 @@ bool CPlatformNetworkManagerStub::LeaveGame(bool bMigrateHost)
 	m_bLeavingGame = true;
 
 #ifdef _WINDOWS64
-	m_lanSessionManager.StopBroadcasting();
+	WinsockNetLayer::StopAdvertising();
 #endif
 
-	// If we are the host wait for the game server to end
 	if(m_pIQNet->IsHost() && g_NetworkManager.ServerStoppedValid())
 	{
 		m_pIQNet->EndGame();
 		g_NetworkManager.ServerStoppedWait();
 		g_NetworkManager.ServerStoppedDestroy();
 	}
+	else
+	{
+		m_pIQNet->EndGame();
+	}
+
+	for (AUTO_VAR(it, currentNetworkPlayers.begin()); it != currentNetworkPlayers.end(); it++)
+		delete *it;
+	currentNetworkPlayers.clear();
+	m_machineQNetPrimaryPlayers.clear();
+	SystemFlagReset();
+
+#ifdef _WINDOWS64
+	WinsockNetLayer::Shutdown();
+	WinsockNetLayer::Initialize();
+#endif
+
 	return true;
 }
 
@@ -264,31 +363,38 @@ bool CPlatformNetworkManagerStub::_LeaveGame(bool bMigrateHost, bool bLeaveRoom)
 
 void CPlatformNetworkManagerStub::HostGame(int localUsersMask, bool bOnlineGame, bool bIsPrivate, unsigned char publicSlots /*= MINECRAFT_NET_MAX_PLAYERS*/, unsigned char privateSlots /*= 0*/)
 {
-// #ifdef _XBOX
-	// 4J Stu - We probably did this earlier as well, but just to be sure!
 	SetLocalGame( !bOnlineGame );
 	SetPrivateGame( bIsPrivate );
 	SystemFlagReset();
 
-	// Make sure that the Primary Pad is in by default
 	localUsersMask |= GetLocalPlayerMask( g_NetworkManager.GetPrimaryPad() );
 
 	m_bLeavingGame = false;
 
 	m_pIQNet->HostGame();
 
+#ifdef _WINDOWS64
+	IQNet::m_player[0].m_smallId = 0;
+	IQNet::m_player[0].m_isRemote = false;
+	IQNet::m_player[0].m_isHostPlayer = true;
+	IQNet::s_playerCount = 1;
+#endif
+
 	_HostGame( localUsersMask, publicSlots, privateSlots );
-//#endif
+
+#ifdef _WINDOWS64
+	int port = WIN64_NET_DEFAULT_PORT;
+	if (!WinsockNetLayer::IsActive())
+		WinsockNetLayer::HostGame(port);
+
+	const wchar_t *hostName = IQNet::m_player[0].m_gamertag;
+	unsigned int settings = app.GetGameHostOption(eGameHostOption_All);
+	WinsockNetLayer::StartAdvertising(port, hostName, settings, 0, 0, MINECRAFT_NET_VERSION);
+#endif
 }
 
 void CPlatformNetworkManagerStub::_HostGame(int usersMask, unsigned char publicSlots /*= MINECRAFT_NET_MAX_PLAYERS*/, unsigned char privateSlots /*= 0*/)
 {
-#ifdef _WINDOWS64
-	// Start LAN broadcasting so other instances can discover this game
-	char* gamertag = ProfileManager.GetGamertag(0);
-	m_lanSessionManager.StartBroadcasting(m_hostGameSessionData, gamertag, "Minecraft World");
-	app.DebugPrintf("LAN: Host game started, broadcasting session\n");
-#endif
 }
 
 bool CPlatformNetworkManagerStub::_StartGame()
@@ -298,7 +404,52 @@ bool CPlatformNetworkManagerStub::_StartGame()
 
 int CPlatformNetworkManagerStub::JoinGame(FriendSessionInfo *searchResult, int localUsersMask, int primaryUserIndex)
 {
+#ifdef _WINDOWS64
+	if (searchResult == NULL)
+		return CGameNetworkManager::JOINGAME_FAIL_GENERAL;
+
+	const char *hostIP = searchResult->data.hostIP;
+	int hostPort = searchResult->data.hostPort;
+
+	if (hostPort <= 0 || hostIP[0] == 0)
+		return CGameNetworkManager::JOINGAME_FAIL_GENERAL;
+
+	m_bLeavingGame = false;
+	IQNet::s_isHosting = false;
+	m_pIQNet->ClientJoinGame();
+
+	IQNet::m_player[0].m_smallId = 0;
+	IQNet::m_player[0].m_isRemote = true;
+	IQNet::m_player[0].m_isHostPlayer = true;
+	wcsncpy_s(IQNet::m_player[0].m_gamertag, 32, searchResult->data.hostName, _TRUNCATE);
+
+	WinsockNetLayer::StopDiscovery();
+
+	if (!WinsockNetLayer::JoinGame(hostIP, hostPort))
+	{
+		app.DebugPrintf("Win64 LAN: Failed to connect to %s:%d\n", hostIP, hostPort);
+		return CGameNetworkManager::JOINGAME_FAIL_GENERAL;
+	}
+
+	BYTE localSmallId = WinsockNetLayer::GetLocalSmallId();
+
+	IQNet::m_player[localSmallId].m_smallId = localSmallId;
+	IQNet::m_player[localSmallId].m_isRemote = false;
+	IQNet::m_player[localSmallId].m_isHostPlayer = false;
+
+	Minecraft *pMinecraft = Minecraft::GetInstance();
+	wcscpy_s(IQNet::m_player[localSmallId].m_gamertag, 32, pMinecraft->user->name.c_str());
+	IQNet::s_playerCount = localSmallId + 1;
+
+	NotifyPlayerJoined(&IQNet::m_player[0]);
+	NotifyPlayerJoined(&IQNet::m_player[localSmallId]);
+
+	m_pGameNetworkManager->StateChange_AnyToStarting();
+
 	return CGameNetworkManager::JOINGAME_SUCCESS;
+#else
+	return CGameNetworkManager::JOINGAME_SUCCESS;
+#endif
 }
 
 bool CPlatformNetworkManagerStub::SetLocalGame(bool isLocal)
@@ -331,54 +482,40 @@ void CPlatformNetworkManagerStub::UnRegisterPlayerChangedCallback(int iPad, void
 
 void CPlatformNetworkManagerStub::HandleSignInChange()
 {
-	return;	
+	return;
+}
+
+void CPlatformNetworkManagerStub::SetGamePlayState()
+{
+#ifdef _WINDOWS64
+	extern QNET_STATE _iQNetStubState;
+	_iQNetStubState = QNET_STATE_GAME_PLAY;
+#endif
 }
 
 bool CPlatformNetworkManagerStub::_RunNetworkGame()
 {
+#ifdef _WINDOWS64
+	extern QNET_STATE _iQNetStubState;
+	_iQNetStubState = QNET_STATE_GAME_PLAY;
+
+	for (DWORD i = 0; i < IQNet::s_playerCount; i++)
+	{
+		if (IQNet::m_player[i].m_isRemote)
+		{
+			INetworkPlayer *pNetworkPlayer = getNetworkPlayer(&IQNet::m_player[i]);
+			if (pNetworkPlayer != NULL && pNetworkPlayer->GetSocket() != NULL)
+			{
+				Socket::addIncomingSocket(pNetworkPlayer->GetSocket());
+			}
+		}
+	}
+#endif
 	return true;
 }
 
 void CPlatformNetworkManagerStub::UpdateAndSetGameSessionData(INetworkPlayer *pNetworkPlayerLeaving /*= NULL*/)
 {
-// 	DWORD playerCount = m_pIQNet->GetPlayerCount();
-// 
-// 	if( this->m_bLeavingGame )
-// 		return;
-// 
-// 	if( GetHostPlayer() == NULL )
-// 		return;
-// 
-// 	for(unsigned int i = 0; i < MINECRAFT_NET_MAX_PLAYERS; ++i)
-// 	{
-// 		if( i < playerCount )
-// 		{
-// 			INetworkPlayer *pNetworkPlayer = GetPlayerByIndex(i);
-// 
-// 			// We can call this from NotifyPlayerLeaving but at that point the player is still considered in the session
-// 			if( pNetworkPlayer != pNetworkPlayerLeaving )
-// 			{
-// 				m_hostGameSessionData.players[i] = ((NetworkPlayerXbox *)pNetworkPlayer)->GetUID();
-// 
-// 				char *temp;
-// 				temp = (char *)wstringtofilename( pNetworkPlayer->GetOnlineName() );
-// 				memcpy(m_hostGameSessionData.szPlayers[i],temp,XUSER_NAME_SIZE);
-// 			}
-// 			else
-// 			{
-// 				m_hostGameSessionData.players[i] = NULL;
-// 				memset(m_hostGameSessionData.szPlayers[i],0,XUSER_NAME_SIZE);
-// 			}
-// 		}
-// 		else
-// 		{
-// 			m_hostGameSessionData.players[i] = NULL;
-// 			memset(m_hostGameSessionData.szPlayers[i],0,XUSER_NAME_SIZE);
-// 		}
-// 	}
-// 
-// 	m_hostGameSessionData.hostPlayerUID = ((NetworkPlayerXbox *)GetHostPlayer())->GetQNetPlayer()->GetXuid();
-// 	m_hostGameSessionData.m_uiGameHostSettings = app.GetGameHostOption(eGameHostOption_All);
 }
 
 int CPlatformNetworkManagerStub::RemovePlayerOnSocketClosedThreadProc( void* lpParam )
@@ -525,28 +662,59 @@ wstring CPlatformNetworkManagerStub::GatherRTTStats()
 void CPlatformNetworkManagerStub::TickSearch()
 {
 #ifdef _WINDOWS64
-	// Start listening if we're not already and not hosting
-	if (!m_lanSessionManager.IsListening() && !m_lanSessionManager.IsBroadcasting())
-	{
-		m_lanSessionManager.StartListening();
-	}
+	if (m_SessionsUpdatedCallback == NULL)
+		return;
 
-	// If new sessions were discovered, notify the UI
-	if (m_lanSessionManager.HasNewSessions())
-	{
-		m_lanSessionManager.ClearNewSessionsFlag();
-		m_bSearchResultsReady = true;
+	static DWORD lastSearchTime = 0;
+	DWORD now = GetTickCount();
+	if (now - lastSearchTime < 2000)
+		return;
+	lastSearchTime = now;
 
-		if (m_SessionsUpdatedCallback != NULL)
-		{
-			m_SessionsUpdatedCallback(m_pSearchParam);
-		}
-	}
+	SearchForGames();
 #endif
 }
 
 void CPlatformNetworkManagerStub::SearchForGames()
 {
+#ifdef _WINDOWS64
+	std::vector<Win64LANSession> lanSessions = WinsockNetLayer::GetDiscoveredSessions();
+
+	for (size_t i = 0; i < friendsSessions[0].size(); i++)
+		delete friendsSessions[0][i];
+	friendsSessions[0].clear();
+
+	for (size_t i = 0; i < lanSessions.size(); i++)
+	{
+		FriendSessionInfo *info = new FriendSessionInfo();
+		size_t nameLen = wcslen(lanSessions[i].hostName);
+		info->displayLabel = new wchar_t[nameLen + 1];
+		wcscpy_s(info->displayLabel, nameLen + 1, lanSessions[i].hostName);
+		info->displayLabelLength = (unsigned char)nameLen;
+		info->displayLabelViewableStartIndex = 0;
+
+		info->data.netVersion = lanSessions[i].netVersion;
+		info->data.m_uiGameHostSettings = lanSessions[i].gameHostSettings;
+		info->data.texturePackParentId = lanSessions[i].texturePackParentId;
+		info->data.subTexturePackId = lanSessions[i].subTexturePackId;
+		info->data.isReadyToJoin = lanSessions[i].isJoinable;
+		info->data.isJoinable = lanSessions[i].isJoinable;
+		strncpy_s(info->data.hostIP, sizeof(info->data.hostIP), lanSessions[i].hostIP, _TRUNCATE);
+		info->data.hostPort = lanSessions[i].hostPort;
+		wcsncpy_s(info->data.hostName, XUSER_NAME_SIZE, lanSessions[i].hostName, _TRUNCATE);
+		info->data.playerCount = lanSessions[i].playerCount;
+		info->data.maxPlayers = lanSessions[i].maxPlayers;
+
+		info->sessionId = (SessionID)((unsigned __int64)inet_addr(lanSessions[i].hostIP) | ((unsigned __int64)lanSessions[i].hostPort << 32));
+
+		friendsSessions[0].push_back(info);
+	}
+
+	m_searchResultsCount[0] = (int)friendsSessions[0].size();
+
+	if (m_SessionsUpdatedCallback != NULL)
+		m_SessionsUpdatedCallback(m_pSearchParam);
+#endif
 }
 
 int CPlatformNetworkManagerStub::SearchForGamesThreadProc( void* lpParameter )
@@ -562,12 +730,10 @@ void CPlatformNetworkManagerStub::SetSearchResultsReady(int resultCount)
 
 vector<FriendSessionInfo *> *CPlatformNetworkManagerStub::GetSessionList(int iPad, int localPlayers, bool partyOnly)
 {
-#ifdef _WINDOWS64
-	return m_lanSessionManager.GetSessionList();
-#else
 	vector<FriendSessionInfo *> *filteredList = new vector<FriendSessionInfo *>();
+	for (size_t i = 0; i < friendsSessions[0].size(); i++)
+		filteredList->push_back(friendsSessions[0][i]);
 	return filteredList;
-#endif
 }
 
 bool CPlatformNetworkManagerStub::GetGameSessionInfo(int iPad, SessionID sessionId, FriendSessionInfo *foundSessionInfo)
@@ -596,15 +762,6 @@ void CPlatformNetworkManagerStub::ForceFriendsSessionRefresh()
 		delete m_pSearchResults[i];
 		m_pSearchResults[i] = NULL;
 	}
-
-#ifdef _WINDOWS64
-	// Restart LAN listening to force a fresh discovery
-	if (m_lanSessionManager.IsListening())
-	{
-		m_lanSessionManager.StopListening();
-		m_lanSessionManager.StartListening();
-	}
-#endif
 }
 
 INetworkPlayer *CPlatformNetworkManagerStub::addNetworkPlayer(IQNetPlayer *pQNetPlayer)
@@ -636,7 +793,7 @@ INetworkPlayer *CPlatformNetworkManagerStub::getNetworkPlayer(IQNetPlayer *pQNet
 
 INetworkPlayer *CPlatformNetworkManagerStub::GetLocalPlayerByUserIndex(int userIndex )
 {
-	return getNetworkPlayer(m_pIQNet->GetLocalPlayerByUserIndex(userIndex)); 
+	return getNetworkPlayer(m_pIQNet->GetLocalPlayerByUserIndex(userIndex));
 }
 
 INetworkPlayer *CPlatformNetworkManagerStub::GetPlayerByIndex(int playerIndex)
@@ -651,7 +808,21 @@ INetworkPlayer * CPlatformNetworkManagerStub::GetPlayerByXuid(PlayerUID xuid)
 
 INetworkPlayer * CPlatformNetworkManagerStub::GetPlayerBySmallId(unsigned char smallId)
 {
-	return getNetworkPlayer(m_pIQNet->GetPlayerBySmallId(smallId));
+	IQNetPlayer *qnetPlayer = m_pIQNet->GetPlayerBySmallId(smallId);
+	if (qnetPlayer == NULL)
+		return NULL;
+
+	INetworkPlayer *networkPlayer = getNetworkPlayer(qnetPlayer);
+#ifdef _WINDOWS64
+	if (networkPlayer == NULL && smallId != 0 && !m_pIQNet->IsHost())
+	{
+		qnetPlayer->m_isRemote = true;
+		qnetPlayer->m_isHostPlayer = false;
+		NotifyPlayerJoined(qnetPlayer);
+		networkPlayer = getNetworkPlayer(qnetPlayer);
+	}
+#endif
+	return networkPlayer;
 }
 
 INetworkPlayer *CPlatformNetworkManagerStub::GetHostPlayer()

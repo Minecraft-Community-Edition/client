@@ -105,7 +105,6 @@ private:
 	bool m_bSaveTransferCancelled;
 #endif
 	bool m_bUpdateSaveSize;
-	wstring m_directConnectAddress;
 
 public:
 	UIScene_LoadOrJoinMenu(int iPad, void *initData, UILayer *parentLayer);
@@ -154,7 +153,6 @@ public:
 	static int DeleteSaveDataReturned(LPVOID lpParam,bool bRes);
 	static int RenameSaveDataReturned(LPVOID lpParam,bool bRes);
 	static int KeyboardCompleteWorldNameCallback(LPVOID lpParam,bool bRes);
-	static int KeyboardCompleteDirectConnectCallback(LPVOID lpParam,bool bRes);
 protected:
 	void handlePress(F64 controlId, F64 childId);
 	void LoadLevelGen(LevelGenerationOptions *levelGen);

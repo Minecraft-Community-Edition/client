@@ -71,6 +71,7 @@ public:
 	virtual void HostGame(int localUsersMask, bool bOnlineGame, bool bIsPrivate, unsigned char publicSlots = MINECRAFT_NET_MAX_PLAYERS, unsigned char privateSlots = 0) = 0;
 	virtual int  JoinGame(FriendSessionInfo *searchResult, int dwLocalUsersMask, int dwPrimaryUserIndex ) = 0;
 	virtual void CancelJoinGame() {};
+	virtual void SetGamePlayState() {};
 	virtual bool SetLocalGame(bool isLocal) = 0;
 	virtual bool IsLocalGame() = 0;
 	virtual void SetPrivateGame(bool isPrivate) = 0;

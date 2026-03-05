@@ -40,10 +40,6 @@
 #include "..\Minecraft.World\DurangoStats.h"
 #endif
 
-#ifdef _WINDOWS64
-#include "..\..\Windows64\Network\P2PConnectionManagerWin.h"
-#endif
-
 // Global instance
 CGameNetworkManager g_NetworkManager;
 CPlatformNetworkManager *CGameNetworkManager::s_pPlatformNetworkManager;
@@ -61,10 +57,6 @@ CGameNetworkManager::CGameNetworkManager()
 #ifdef __ORBIS__
 	m_pUpsell = NULL;
 	m_pInviteInfo = NULL;
-#endif
-
-#ifdef _WINDOWS64
-	m_p2pManager = NULL;
 #endif
 }
 
@@ -91,9 +83,6 @@ void CGameNetworkManager::Terminate()
 {
 	if( m_bInitialised )
 	{
-#ifdef _WINDOWS64
-		TeardownP2PMesh();
-#endif
 		s_pPlatformNetworkManager->Terminate();
 	}
 }
@@ -128,10 +117,6 @@ void CGameNetworkManager::DoWork()
 	}
 #endif
 	s_pPlatformNetworkManager->DoWork();
-
-#ifdef _WINDOWS64
-	TickP2P();
-#endif
 
 #ifdef __ORBIS__
 	if (m_pUpsell != NULL && m_pUpsell->hasResponse())
@@ -181,15 +166,13 @@ bool CGameNetworkManager::_RunNetworkGame(LPVOID lpParameter)
 			return true;
 		}
 	}
+	else
+	{
+		// Client needs QNET_STATE_GAME_PLAY so that IsInGameplay() returns true
+		s_pPlatformNetworkManager->SetGamePlayState();
+	}
 	
 	if( g_NetworkManager.IsLeavingGame() ) return false;
-
-#ifdef _WINDOWS64
-	if (!g_NetworkManager.IsLocalGame())
-	{
-		g_NetworkManager.EstablishP2PMesh();
-	}
-#endif
 
 	app.SetGameStarted(true);
 
@@ -1283,15 +1266,7 @@ bool CGameNetworkManager::SystemFlagGet(INetworkPlayer *pNetworkPlayer, int inde
 
 wstring CGameNetworkManager::GatherStats()
 {
-	wstring stats = s_pPlatformNetworkManager->GatherStats();
-#ifdef _WINDOWS64
-	if (m_p2pManager != NULL)
-	{
-		stats += L"\n";
-		stats += GatherP2PStats();
-	}
-#endif
-	return stats;
+	return s_pPlatformNetworkManager->GatherStats();
 }
 
 void CGameNetworkManager::renderQueueMeter()
@@ -1421,7 +1396,10 @@ void CGameNetworkManager::CreateSocket( INetworkPlayer *pNetworkPlayer, bool loc
 	Minecraft *pMinecraft = Minecraft::GetInstance();
 
 	Socket *socket = NULL;
-	shared_ptr<MultiplayerLocalPlayer> mpPlayer = pMinecraft->localplayers[pNetworkPlayer->GetUserIndex()];
+	shared_ptr<MultiplayerLocalPlayer> mpPlayer = nullptr;
+	int userIdx = pNetworkPlayer->GetUserIndex();
+	if (userIdx >= 0 && userIdx < XUSER_MAX_COUNT)
+		mpPlayer = pMinecraft->localplayers[userIdx];
 	if( localPlayer && mpPlayer != NULL && mpPlayer->connection != NULL)
 	{
 		// If we already have a MultiplayerLocalPlayer here then we are doing a session type change
@@ -1518,7 +1496,7 @@ void CGameNetworkManager::PlayerJoining( INetworkPlayer *pNetworkPlayer )
     else
     {
         if( !pNetworkPlayer->IsHost() )
-        {
+        {		
 			for(int idx = 0; idx < XUSER_MAX_COUNT; ++idx)
 			{
 				if(Minecraft::GetInstance()->localplayers[idx] != NULL)
@@ -1529,29 +1507,10 @@ void CGameNetworkManager::PlayerJoining( INetworkPlayer *pNetworkPlayer )
         }
 	}
 #endif
-
-#ifdef _WINDOWS64
-	if (m_p2pManager != NULL && !pNetworkPlayer->IsLocal())
-	{
-		INetworkPlayer* localPlayer = GetLocalPlayerByUserIndex(0);
-		if (localPlayer != NULL)
-		{
-			m_p2pManager->EstablishDirectConnection(localPlayer, pNetworkPlayer);
-		}
-	}
-#endif
 }
 
 void CGameNetworkManager::PlayerLeaving( INetworkPlayer *pNetworkPlayer )
 {
-#ifdef _WINDOWS64
-	// Disconnect P2P with the leaving player
-	if (m_p2pManager != NULL && !pNetworkPlayer->IsLocal())
-	{
-		m_p2pManager->DisconnectPeer(pNetworkPlayer);
-	}
-#endif
-
 	if( pNetworkPlayer->IsLocal() )
 	{
 		ProfileManager.SetCurrentGameActivity(pNetworkPlayer->GetUserIndex(),CONTEXT_PRESENCE_IDLE,false);
@@ -2047,101 +2006,3 @@ void CGameNetworkManager::startAdhocMatching()
 }
 
 #endif
-
-#ifdef _WINDOWS64
-
-///////////////////////////////////// P2P Networking /////////////////////////////////////
-
-void CGameNetworkManager::InitializeP2PConnections()
-{
-	if (m_p2pManager != NULL)
-		return;  // Already initialized
-
-	CP2PConnectionManagerWin* winP2P = new CP2PConnectionManagerWin();
-	if (winP2P->Initialize())
-	{
-		m_p2pManager = winP2P;
-
-		// Wire up the P2P manager to the socket layer and packet router
-		Socket::SetP2PManager(m_p2pManager);
-		g_PacketRouter.Initialize(m_p2pManager);
-
-		app.DebugPrintf("P2P: Network manager initialized\n");
-	}
-	else
-	{
-		delete winP2P;
-		app.DebugPrintf("P2P: Failed to initialize network manager\n");
-	}
-}
-
-void CGameNetworkManager::EstablishP2PMesh()
-{
-	if (m_p2pManager == NULL)
-		InitializeP2PConnections();
-
-	if (m_p2pManager == NULL)
-		return;
-
-	// Discover our public endpoint
-	m_p2pManager->DiscoverPublicEndpoint();
-
-	INetworkPlayer* localPlayer = GetLocalPlayerByUserIndex(0);
-	if (localPlayer == NULL)
-		return;
-
-	int playerCount = GetPlayerCount();
-	for (int i = 0; i < playerCount; i++)
-	{
-		INetworkPlayer* player = GetPlayerByIndex(i);
-		if (player != NULL && !player->IsLocal() && player != localPlayer)
-		{
-			m_p2pManager->EstablishDirectConnection(localPlayer, player);
-		}
-	}
-
-	app.DebugPrintf("P2P: Mesh establishment initiated for %d players\n", playerCount);
-}
-
-void CGameNetworkManager::TeardownP2PMesh()
-{
-	if (m_p2pManager == NULL)
-		return;
-
-	// Disconnect the P2P manager from socket layer and packet router
-	Socket::SetP2PManager(NULL);
-	g_PacketRouter.Shutdown();
-
-	// Shutdown and delete
-	m_p2pManager->Shutdown();
-	delete m_p2pManager;
-	m_p2pManager = NULL;
-
-	app.DebugPrintf("P2P: Mesh torn down\n");
-}
-
-void CGameNetworkManager::TickP2P()
-{
-	if (m_p2pManager != NULL)
-	{
-		m_p2pManager->Tick();
-	}
-}
-
-EP2PConnectionState CGameNetworkManager::GetP2PConnectionState(INetworkPlayer* player)
-{
-	if (m_p2pManager == NULL || player == NULL)
-		return P2P_STATE_DISCONNECTED;
-
-	return m_p2pManager->GetConnectionState(player);
-}
-
-wstring CGameNetworkManager::GatherP2PStats()
-{
-	if (m_p2pManager == NULL)
-		return L"P2P: Not active\n";
-
-	return m_p2pManager->GetDebugStats();
-}
-
-#endif // _WINDOWS64

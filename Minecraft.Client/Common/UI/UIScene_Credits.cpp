@@ -454,6 +454,11 @@ SCreditTextItemDef UIScene_Credits::gs_aCreditDefs[MAX_CREDIT_STRINGS] =
 	{ L"Victoria Bruder (CompuCom Systems Inc)",		NO_TRANSLATED_STRING,			NO_TRANSLATED_STRING,eSmallText },																							
 
 #elif defined(_WIN64)
+	{ L"",												NO_TRANSLATED_STRING,			NO_TRANSLATED_STRING,eSmallText },	// extra blank line
+	{ L"Code Used",										NO_TRANSLATED_STRING,			NO_TRANSLATED_STRING,eExtraLargeText },
+	{ L"",												NO_TRANSLATED_STRING,			NO_TRANSLATED_STRING,eSmallText },	// extra blank line
+	{ L"LCEMP Multiplayer",								NO_TRANSLATED_STRING,			NO_TRANSLATED_STRING,eLargeText },
+	{ L"notpies",										NO_TRANSLATED_STRING,			NO_TRANSLATED_STRING,eSmallText },
 #elif defined(__PSVITA__)
 // font credits
 	{ L"",												NO_TRANSLATED_STRING,			NO_TRANSLATED_STRING,eSmallText },	// extra blank line

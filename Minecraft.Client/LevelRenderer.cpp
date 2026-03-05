@@ -1941,7 +1941,12 @@ bool LevelRenderer::updateDirtyChunks()
 						{
 							if( (!onlyRebuild) ||
 								globalChunkFlags[ pClipChunk->globalIdx ] & CHUNK_FLAG_COMPILED ||
+#ifdef _WINDOWS64
+								( distSq < 96 * 96 ) )	// Always rebuild really near things or else building (say) at tower up into empty blocks when we are low on memory will not create render data
+#else
 								( distSq < 20 * 20 ) )	// Always rebuild really near things or else building (say) at tower up into empty blocks when we are low on memory will not create render data
+#endif
+								
 							{
 								considered++;
 								// Is this chunk nearer than our nearest?

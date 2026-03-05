@@ -67,7 +67,7 @@ public:
 
     void InstallOffer(int iIndex,
                       W64_INSTALL_CALLBACK pfnCallback = nullptr,
-                      void* pUserData = nullptr);
+                      void* pUserData = nullptr, wstring username = L"");
 
     static bool FetchImageFromUrl(const wchar_t* url, PBYTE* ppData, DWORD* pdwSize);
     static bool FetchBytesFromUrl(const wchar_t* url, PBYTE* ppData, DWORD* pdwSize);
@@ -95,6 +95,7 @@ private:
         int                  offerIndex;
         W64_INSTALL_CALLBACK pfnCallback;
         void*                pUserData;
+		wstring			     username;
     };
 
     static DWORD WINAPI InstallThreadProc(LPVOID lpParam);

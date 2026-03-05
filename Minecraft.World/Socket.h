@@ -8,10 +8,6 @@
 #define SOCKET_CLIENT_END 0
 #define SOCKET_SERVER_END 1
 
-// Forward declare P2P types
-class IP2PConnectionManager;
-enum EP2PChannel;
-
 class SocketAddress;
 class ServerConnection;
 
@@ -135,11 +131,4 @@ public:
 
 	bool isClosing() { return m_endClosed[SOCKET_CLIENT_END] || m_endClosed[SOCKET_SERVER_END]; }
 	BYTE getSmallId() { return networkPlayerSmallId; }
-
-#ifdef _WINDOWS64
-	// P2P direct connection support
-	static IP2PConnectionManager* s_p2pManager;
-	static void SetP2PManager(IP2PConnectionManager* manager) { s_p2pManager = manager; }
-	static IP2PConnectionManager* GetP2PManager() { return s_p2pManager; }
-#endif
 };

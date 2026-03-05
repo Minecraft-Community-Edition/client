@@ -8,14 +8,6 @@ class DataOutputStream;
 
 #define PACKET_ENABLE_STAT_TRACKING 0
 
-enum EPacketRoutingMode
-{
-	ROUTING_HOST_ONLY = 0,		// Must go through host (game state, actions, spawns)
-	ROUTING_PREFER_DIRECT,		// Use P2P if available, fall back to host
-	ROUTING_DIRECT_ONLY,		// Only send via P2P (keepalives, P2P-specific)
-	ROUTING_BROADCAST			// Send to all peers (host broadcasts)
-};
-
 class Packet;
 
 typedef shared_ptr<Packet> (*packetCreateFn)();
@@ -60,10 +52,6 @@ public:
 	static unordered_set<int> clientReceivedPackets;
 	static unordered_set<int> serverReceivedPackets;
 	static unordered_set<int> sendToAnyClientPackets;
-
-	static unordered_map<int, EPacketRoutingMode> packetRoutingModes;
-	static EPacketRoutingMode GetRoutingMode(int packetId);
-	static void SetRoutingMode(int packetId, EPacketRoutingMode mode);
 
 	// 4J Stu - Added the sendToAnyClient param so we can limit some packets to be only sent to one player on a system
 	// 4J Stu - Added renderStats param for use in debugging

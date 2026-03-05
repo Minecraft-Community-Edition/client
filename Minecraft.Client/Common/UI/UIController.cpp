@@ -691,7 +691,7 @@ void UIController::tickInput()
 #endif
 		{
 #ifdef _WINDOWS64
-			if (!g_KBMInput.IsMouseGrabbed())
+			if (!g_KBMInput.IsMouseGrabbed() && g_KBMInput.IsKBMActive())
 			{
 				UIScene *pScene = NULL;
 				for (int grp = 0; grp < eUIGroup_COUNT && !pScene; ++grp)
@@ -1018,7 +1018,7 @@ void UIController::handleKeyPress(unsigned int iPad, unsigned int key)
 	released = InputManager.ButtonReleased(iPad,key); // Toggle
 
 #ifdef _WINDOWS64
-	if (iPad == 0)
+	if (iPad == 0 && g_KBMInput.IsKBMActive())
 	{
 		int vk = 0;
 		switch (key)
@@ -1029,10 +1029,10 @@ void UIController::handleKeyPress(unsigned int iPad, unsigned int key)
 		case ACTION_MENU_DOWN:  vk = VK_DOWN;   break;
 		case ACTION_MENU_LEFT:  vk = VK_LEFT;   break;
 		case ACTION_MENU_RIGHT: vk = VK_RIGHT;  break;
-		case ACTION_MENU_X:     vk = 'E';       break;
+		case ACTION_MENU_X:     vk = 'R';       break;
 		case ACTION_MENU_Y:     vk = VK_TAB;    break;
 		case ACTION_MENU_LEFT_SCROLL:  vk = 'Q'; break;
-		case ACTION_MENU_RIGHT_SCROLL: vk = 'R'; break;
+		case ACTION_MENU_RIGHT_SCROLL: vk = 'E'; break;
 		case ACTION_MENU_PAGEUP:   vk = VK_PRIOR; break;
 		case ACTION_MENU_PAGEDOWN: vk = VK_NEXT;  break;
 		}
@@ -1043,7 +1043,20 @@ void UIController::handleKeyPress(unsigned int iPad, unsigned int key)
 			if (!pressed && !released && g_KBMInput.IsKeyDown(vk)) { down = true; }
 		}
 
-		if ((key == ACTION_MENU_OK || key == ACTION_MENU_A) && !g_KBMInput.IsMouseGrabbed())
+		if ((key == ACTION_MENU_UP || key == ACTION_MENU_DOWN) && !pressed && !released && !down)
+		{
+			bool inCrafting = (m_groups[(EUIGroup)(iPad+1)]->FindScene(eUIScene_Crafting2x2Menu) != NULL)
+			              || (m_groups[(EUIGroup)(iPad+1)]->FindScene(eUIScene_Crafting3x3Menu) != NULL);
+			if (inCrafting)
+			{
+				int wsKey = (key == ACTION_MENU_UP) ? 'W' : 'S';
+				if (g_KBMInput.IsKeyPressed(wsKey))  { pressed = true; down = true; }
+				if (g_KBMInput.IsKeyReleased(wsKey)) { released = true; down = false; }
+				if (!pressed && !released && g_KBMInput.IsKeyDown(wsKey)) { down = true; }
+			}
+		}
+
+		if ((key == ACTION_MENU_OK || key == ACTION_MENU_A) && !g_KBMInput.IsMouseGrabbed() && g_KBMInput.IsKBMActive())
 		{
 			if (g_KBMInput.IsMouseButtonPressed(KeyboardMouseInput::MOUSE_LEFT))  { pressed = true; down = true; }
 			if (g_KBMInput.IsMouseButtonReleased(KeyboardMouseInput::MOUSE_LEFT)) { released = true; down = false; }
@@ -1477,7 +1490,7 @@ GDrawTexture * RADLINK UIController::TextureSubstitutionCreateCallback ( void * 
 
 			// 4J Stu - All our flash controls that allow replacing textures use a special 64x64 symbol
 			// Force this size here so that our images don't get scaled wildly
-	#if (defined __ORBIS__ || defined _DURANGO )
+	#if (defined __ORBIS__ || defined _DURANGO || defined _WINDOWS64 )
 			*width = 96;
 			*height = 96;
 	#else

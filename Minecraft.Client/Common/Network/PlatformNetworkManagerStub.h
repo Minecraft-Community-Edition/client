@@ -6,10 +6,6 @@ using namespace std;
 #include "PlatformNetworkManagerInterface.h"
 #include "SessionInfo.h"
 
-#ifdef _WINDOWS64
-#include "LANSessionManager.h"
-#endif
-
 class CPlatformNetworkManagerStub : public CPlatformNetworkManager
 {
 	friend class CGameNetworkManager;
@@ -59,15 +55,16 @@ public:
 	virtual void HandleSignInChange();
 
 	virtual bool _RunNetworkGame();
+	virtual void SetGamePlayState();
 	
 private:
 	bool isSystemPrimaryPlayer(IQNetPlayer *pQNetPlayer);
 	virtual bool _LeaveGame(bool bMigrateHost, bool bLeaveRoom);
 	virtual void _HostGame(int dwUsersMask, unsigned char publicSlots = MINECRAFT_NET_MAX_PLAYERS, unsigned char privateSlots = 0);
 	virtual bool _StartGame();
-
+public:
     IQNet *             m_pIQNet;             // pointer to QNet interface
-
+private:
 	HANDLE m_notificationListener;
 
 	vector<IQNetPlayer *> m_machineQNetPrimaryPlayers; // collection of players that we deem to be the main one for that system
@@ -165,16 +162,11 @@ public:
 	virtual void GetFullFriendSessionInfo( FriendSessionInfo *foundSession, void (* FriendSessionUpdatedFn)(bool success, void *pParam), void *pParam );
 	virtual void ForceFriendsSessionRefresh();
 
-private:
+public:
 	void NotifyPlayerJoined( IQNetPlayer *pQNetPlayer );
+	void NotifyPlayerLeaving( IQNetPlayer *pQNetPlayer );
 
 #ifndef _XBOX
 	void FakeLocalPlayerJoined() { NotifyPlayerJoined(m_pIQNet->GetLocalPlayerByUserIndex(0)); }
-#endif
-
-#ifdef _WINDOWS64
-	CLANSessionManager* GetLANSessionManager() { return &m_lanSessionManager; }
-private:
-	CLANSessionManager m_lanSessionManager;
 #endif
 };

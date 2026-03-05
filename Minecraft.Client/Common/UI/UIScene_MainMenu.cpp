@@ -9,6 +9,7 @@
 #ifdef _WINDOWS64
 #include "AchievementScreen.h"
 #include "StatsCounter.h"
+#include "Windows64_Minecraft.h"
 #endif
 #ifdef __ORBIS__
 #include <error_dialog.h>
@@ -48,7 +49,7 @@ UIScene_MainMenu::UIScene_MainMenu(int iPad, void *initData, UILayer *parentLaye
 	if(ProfileManager.IsFullVersion())
 	{
 		m_bTrialVersion=false;
-		m_buttons[(int)eControl_UnlockOrDLC].init(app.GetString(IDS_DOWNLOADABLECONTENT),eControl_UnlockOrDLC);
+		m_buttons[(int)eControl_UnlockOrDLC].init(L"LCE Workshop",eControl_UnlockOrDLC);
 	}
 	else
 	{
@@ -115,6 +116,8 @@ UIScene_MainMenu::UIScene_MainMenu(int iPad, void *initData, UILayer *parentLaye
 	// Fix for #45154 - Frontend: DLC: Content can only be downloaded from the frontend if you have not joined/exited multiplayer
 	XBackgroundDownloadSetMode(XBACKGROUND_DOWNLOAD_MODE_ALWAYS_ALLOW);
 #endif
+
+	Minecraft::GetInstance()->user->name = convStringToWstring( ProfileManager.GetGamertag(ProfileManager.GetPrimaryPad()));
 }
 
 UIScene_MainMenu::~UIScene_MainMenu()
@@ -179,7 +182,7 @@ void UIScene_MainMenu::handleGainFocus(bool navBack)
 	if(navBack && ProfileManager.IsFullVersion())
 	{
 		// Replace the Unlock Full Game with Downloadable Content
-		m_buttons[(int)eControl_UnlockOrDLC].setLabel(app.GetString(IDS_DOWNLOADABLECONTENT));
+		m_buttons[(int)eControl_UnlockOrDLC].setLabel(L"LCE Workshop");
 	}
 
 #if TO_BE_IMPLEMENTED
@@ -365,6 +368,12 @@ void UIScene_MainMenu::handlePress(F64 controlId, F64 childId)
 
 		m_eAction=eAction_RunXboxHelp;
 		signInReturnedFunc = &UIScene_MainMenu::XboxHelp_SignInReturned;
+		break;
+#endif
+
+#ifdef _WINDOWS64
+	case eControl_Exit: 
+		PostMessage(GetMinecraftWindowHWND(), WM_CLOSE, 0, 0);
 		break;
 #endif
 

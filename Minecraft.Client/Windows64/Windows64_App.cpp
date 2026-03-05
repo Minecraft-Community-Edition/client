@@ -26,6 +26,8 @@ void CConsoleMinecraftApp::StoreLaunchData()
 }
 void CConsoleMinecraftApp::ExitGame()
 {
+	extern HWND g_hWnd;
+	PostMessage(g_hWnd, WM_CLOSE, 0, 0);
 }
 void CConsoleMinecraftApp::FatalLoadError()
 {
@@ -55,7 +57,8 @@ void CConsoleMinecraftApp::TemporaryCreateGameStart()
 	Minecraft *pMinecraft=Minecraft::GetInstance();
 	app.ReleaseSaveThumbnail();
 	ProfileManager.SetLockedProfile(0);
-	pMinecraft->user->name = L"Windows";
+	extern wchar_t g_Win64UsernameW[17];
+	pMinecraft->user->name = g_Win64UsernameW;
 	app.ApplyGameSettingsChanged(0);
 
 	////////////////////////////////////////////////////////////////////////////////////////////// From CScene_MultiGameJoinLoad::OnInit
