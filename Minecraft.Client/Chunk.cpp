@@ -385,7 +385,11 @@ void Chunk::rebuild()
 							MemSect(0);
 							glPushMatrix();
 							glDepthMask(true);	// 4J added
+	#if defined(_XBOX) || defined(_XBOX_ONE) || defined(__PS3__) || defined(__ORBIS__) || defined(__PSVITA__)
 							t->useCompactVertices(true);	 // 4J added
+	#else
+							t->useCompactVertices(false);	 // compact path on w vulkan caused uv decode issues, keep this false
+	#endif
 							translateToPos();
 							float ss = 1.000001f;
 							// 4J - have removed this scale as I don't think we should need it, and have now optimised the vertex
@@ -704,7 +708,11 @@ void Chunk::rebuild_SPU()
 			MemSect(0);
 			glPushMatrix();
 			glDepthMask(true);	// 4J added
+	#if defined(_XBOX) || defined(_XBOX_ONE) || defined(__PS3__) || defined(__ORBIS__) || defined(__PSVITA__)
 			t->useCompactVertices(true);	 // 4J added
+	#else
+			t->useCompactVertices(false);	 // compact path on w vulkan caused uv decode issues, keep this false
+	#endif
 			translateToPos();
 			float ss = 1.000001f;
 			// 4J - have removed this scale as I don't think we should need it, and have now optimised the vertex
