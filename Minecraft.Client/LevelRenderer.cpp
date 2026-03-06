@@ -82,21 +82,23 @@ C4JThread::Event *LevelRenderer::s_activationEventA[MAX_CHUNK_REBUILD_THREADS];
 const int overworldSize = LEVEL_MAX_WIDTH + LevelRenderer::PLAYER_VIEW_DISTANCE + LevelRenderer::PLAYER_VIEW_DISTANCE;
 const int netherSize = HELL_LEVEL_MAX_WIDTH + 2; // 4J Stu - The plus 2 is really just to make our total chunk count a multiple of 8 for the flags, we will never see these in the nether
 const int endSize = END_LEVEL_MAX_WIDTH;
-const int LevelRenderer::MAX_LEVEL_RENDER_SIZE[3] = { overworldSize, netherSize, endSize };
-const int LevelRenderer::DIMENSION_OFFSETS[3] = { 0, (overworldSize * overworldSize * CHUNK_Y_COUNT) ,  (overworldSize * overworldSize * CHUNK_Y_COUNT) + ( netherSize * netherSize * CHUNK_Y_COUNT ) };
+const int aetherSize = LEVEL_MAX_WIDTH + LevelRenderer::PLAYER_VIEW_DISTANCE + LevelRenderer::PLAYER_VIEW_DISTANCE;
+const int LevelRenderer::MAX_LEVEL_RENDER_SIZE[4] = { overworldSize, netherSize, endSize, aetherSize };
+const int LevelRenderer::DIMENSION_OFFSETS[4] = { 0, (overworldSize * overworldSize * CHUNK_Y_COUNT) ,  (overworldSize * overworldSize * CHUNK_Y_COUNT) + ( netherSize * netherSize * CHUNK_Y_COUNT ), (overworldSize * overworldSize * CHUNK_Y_COUNT) + ( netherSize * netherSize * CHUNK_Y_COUNT ) + ( endSize * endSize * CHUNK_Y_COUNT ) };
 #else
 // This defines the maximum size of renderable level, must be big enough to cope with actual size of level + view distance at each side
 // so that we can render the "infinite" sea at the edges. Currently defined as:
 // Dimension idx 0 (overworld) : 80 ( = 54 + 13 + 13 )
 // Dimension idx 1 (nether)    : 44 ( = 18 + 13 + 13 )
 // Dimension idx 2 (the end)   : 44 ( = 18 + 13 + 13 )
+// Dimension idx 3 (aether)    : 80 ( = 54 + 13 + 13 )
 
-const int LevelRenderer::MAX_LEVEL_RENDER_SIZE[3] = { 80, 44, 44 };
+const int LevelRenderer::MAX_LEVEL_RENDER_SIZE[4] = { 80, 44, 44, 80 };
 
 // Linked directly to the sizes in the previous array, these next values dictate the start offset for each dimension index into the global array for these things.
 // Each dimension uses MAX_LEVEL_RENDER_SIZE[i]^2 * 8 indices, as a MAX_LEVEL_RENDER_SIZE * MAX_LEVEL_RENDER_SIZE * 8 sized cube of references.
 
-const int LevelRenderer::DIMENSION_OFFSETS[3] = { 0, (80 * 80 * CHUNK_Y_COUNT) ,  (80 * 80 * CHUNK_Y_COUNT) + ( 44 * 44 * CHUNK_Y_COUNT ) };
+const int LevelRenderer::DIMENSION_OFFSETS[4] = { 0, (80 * 80 * CHUNK_Y_COUNT) ,  (80 * 80 * CHUNK_Y_COUNT) + ( 44 * 44 * CHUNK_Y_COUNT ), (80 * 80 * CHUNK_Y_COUNT) + ( 44 * 44 * CHUNK_Y_COUNT ) + ( 44 * 44 * CHUNK_Y_COUNT ) };
 #endif
 
 LevelRenderer::LevelRenderer(Minecraft *mc, Textures *textures)
@@ -3225,9 +3227,10 @@ void LevelRenderer::registerTextures(IconRegister *iconRegister)
 	}
 }
 
-// Gets a dimension index (0, 1, or 2) from an id ( 0, -1, 1)
+// Gets a dimension index (0, 1, 2, or 3) from an id ( 0, -1, 1, 2)
 int LevelRenderer::getDimensionIndexFromId(int id)
 {
+	if (id == 2) return 3; // Aether
 	return ( 3 - id ) % 3;
 }
 
@@ -3262,7 +3265,8 @@ bool LevelRenderer::isGlobalIndexInSameDimension( int idx, Level *level)
 {
 	int dim = getDimensionIndexFromId(level->dimension->id);
 	int idxDim = 0;
-	if( idx >= DIMENSION_OFFSETS[2] ) idxDim = 2;
+	if( idx >= DIMENSION_OFFSETS[3] ) idxDim = 3;
+	else if( idx >= DIMENSION_OFFSETS[2] ) idxDim = 2;
 	else if ( idx >= DIMENSION_OFFSETS[1] ) idxDim = 1;
 	return (dim == idxDim);
 }
@@ -3271,7 +3275,8 @@ int LevelRenderer::getGlobalChunkCount()
 {
 	return  ( MAX_LEVEL_RENDER_SIZE[0] * MAX_LEVEL_RENDER_SIZE[0] * CHUNK_Y_COUNT ) +
 		( MAX_LEVEL_RENDER_SIZE[1] * MAX_LEVEL_RENDER_SIZE[1] * CHUNK_Y_COUNT ) +
-		( MAX_LEVEL_RENDER_SIZE[2] * MAX_LEVEL_RENDER_SIZE[2] * CHUNK_Y_COUNT );
+		( MAX_LEVEL_RENDER_SIZE[2] * MAX_LEVEL_RENDER_SIZE[2] * CHUNK_Y_COUNT ) +
+		( MAX_LEVEL_RENDER_SIZE[3] * MAX_LEVEL_RENDER_SIZE[3] * CHUNK_Y_COUNT );
 }
 
 int LevelRenderer::getGlobalChunkCountForOverworld()
