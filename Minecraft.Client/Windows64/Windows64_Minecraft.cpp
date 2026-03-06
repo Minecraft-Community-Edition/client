@@ -43,6 +43,10 @@
 #include "Xbox/resource.h"
 
 #include "Windows64_Minecraft.h"
+#ifdef _WINDOWS64
+#define VK_USE_PLATFORM_WIN32_KHR
+#include <vulkan/vulkan.h>
+#endif
 
 HINSTANCE hMyInst;
 LRESULT CALLBACK DlgProc(HWND hWndDlg, UINT Msg, WPARAM wParam, LPARAM lParam);
@@ -347,6 +351,58 @@ D3D_FEATURE_LEVEL       g_featureLevel = D3D_FEATURE_LEVEL_11_0;
 ID3D11Device*           g_pd3dDevice = NULL;
 ID3D11DeviceContext*    g_pImmediateContext = NULL;
 IDXGISwapChain*         g_pSwapChain = NULL;
+ID3D11RenderTargetView* g_pRenderTargetView = NULL;
+ID3D11DepthStencilView* g_pDepthStencilView = NULL;
+ID3D11Texture2D*		g_pDepthStencilBuffer = NULL;
+
+enum ERendererBackend
+{
+	RENDERER_BACKEND_D3D11 = 0,
+	RENDERER_BACKEND_VULKAN,
+};
+
+static ERendererBackend g_rendererBackendRequested = RENDERER_BACKEND_D3D11;
+static ERendererBackend g_rendererBackendActive = RENDERER_BACKEND_D3D11;
+
+struct LegacyRendererBridge
+{
+	ID3D11Device *device;
+	ID3D11DeviceContext *context;
+	ID3D11RenderTargetView *renderTargetView;
+	ID3D11DepthStencilView *depthStencilView;
+	IDXGISwapChain *swapChain;
+	bool ready;
+};
+
+struct VulkanBootstrapState
+{
+	VkInstance instance;
+	VkSurfaceKHR surface;
+	VkPhysicalDevice physicalDevice;
+	VkDevice device;
+	VkQueue graphicsQueue;
+	uint32_t graphicsQueueFamilyIndex;
+	VkSwapchainKHR swapChain;
+	VkFormat swapChainFormat;
+	VkExtent2D swapChainExtent;
+	char gpuName[VK_MAX_PHYSICAL_DEVICE_NAME_SIZE];
+	bool initialised;
+};
+
+static VulkanBootstrapState g_vulkanBootstrapState =
+{
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	VK_FORMAT_UNDEFINED,
+	{ 0, 0 },
+	{ 0 },
+	false
+};
 
 static WORD g_originalGammaRamp[3][256];
 static bool g_gammaRampSaved = false;
@@ -393,9 +449,651 @@ void Windows64_RestoreGamma()
 	SetDeviceGammaRamp(hdc, g_originalGammaRamp);
 	ReleaseDC(g_hWnd, hdc);
 }
-ID3D11RenderTargetView* g_pRenderTargetView = NULL;
-ID3D11DepthStencilView* g_pDepthStencilView = NULL;
-ID3D11Texture2D*		g_pDepthStencilBuffer = NULL;
+
+static const char* GetRendererBackendName(ERendererBackend backend)
+{
+	switch (backend)
+	{
+	case RENDERER_BACKEND_VULKAN: return "vulkan";
+	case RENDERER_BACKEND_D3D11:
+	default: return "d3d11";
+	}
+}
+
+static void PrintRendererStatusToConsole(const char *phase, const char *detail = "")
+{
+	printf("[Renderer] %s | requested=%s active=%s %s\n",
+		phase ? phase : "state",
+		GetRendererBackendName(g_rendererBackendRequested),
+		GetRendererBackendName(g_rendererBackendActive),
+		detail ? detail : "");
+	fflush(stdout);
+}
+
+static LegacyRendererBridge GetLegacyRendererBridge()
+{
+	LegacyRendererBridge bridge;
+	bridge.device = g_pd3dDevice;
+	bridge.context = g_pImmediateContext;
+	bridge.renderTargetView = g_pRenderTargetView;
+	bridge.depthStencilView = g_pDepthStencilView;
+	bridge.swapChain = g_pSwapChain;
+	bridge.ready = (bridge.device && bridge.context && bridge.renderTargetView && bridge.depthStencilView && bridge.swapChain);
+	return bridge;
+}
+
+static const char* VkResultToString(VkResult result)
+{
+	switch (result)
+	{
+	case VK_SUCCESS: return "VK_SUCCESS";
+	case VK_NOT_READY: return "VK_NOT_READY";
+	case VK_TIMEOUT: return "VK_TIMEOUT";
+	case VK_EVENT_SET: return "VK_EVENT_SET";
+	case VK_EVENT_RESET: return "VK_EVENT_RESET";
+	case VK_INCOMPLETE: return "VK_INCOMPLETE";
+	case VK_ERROR_OUT_OF_HOST_MEMORY: return "VK_ERROR_OUT_OF_HOST_MEMORY";
+	case VK_ERROR_OUT_OF_DEVICE_MEMORY: return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
+	case VK_ERROR_INITIALIZATION_FAILED: return "VK_ERROR_INITIALIZATION_FAILED";
+	case VK_ERROR_DEVICE_LOST: return "VK_ERROR_DEVICE_LOST";
+	case VK_ERROR_MEMORY_MAP_FAILED: return "VK_ERROR_MEMORY_MAP_FAILED";
+	case VK_ERROR_LAYER_NOT_PRESENT: return "VK_ERROR_LAYER_NOT_PRESENT";
+	case VK_ERROR_EXTENSION_NOT_PRESENT: return "VK_ERROR_EXTENSION_NOT_PRESENT";
+	case VK_ERROR_FEATURE_NOT_PRESENT: return "VK_ERROR_FEATURE_NOT_PRESENT";
+	case VK_ERROR_INCOMPATIBLE_DRIVER: return "VK_ERROR_INCOMPATIBLE_DRIVER";
+	case VK_ERROR_TOO_MANY_OBJECTS: return "VK_ERROR_TOO_MANY_OBJECTS";
+	case VK_ERROR_FORMAT_NOT_SUPPORTED: return "VK_ERROR_FORMAT_NOT_SUPPORTED";
+	case VK_ERROR_SURFACE_LOST_KHR: return "VK_ERROR_SURFACE_LOST_KHR";
+	case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR: return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
+	case VK_SUBOPTIMAL_KHR: return "VK_SUBOPTIMAL_KHR";
+	case VK_ERROR_OUT_OF_DATE_KHR: return "VK_ERROR_OUT_OF_DATE_KHR";
+	default: return "VK_UNKNOWN";
+	}
+}
+
+static void CleanupVulkanBootstrap()
+{
+	if (g_vulkanBootstrapState.device != 0)
+	{
+		vkDeviceWaitIdle(g_vulkanBootstrapState.device);
+	}
+	if (g_vulkanBootstrapState.swapChain != 0)
+	{
+		vkDestroySwapchainKHR(g_vulkanBootstrapState.device, g_vulkanBootstrapState.swapChain, NULL);
+	}
+	if (g_vulkanBootstrapState.device != 0)
+	{
+		vkDestroyDevice(g_vulkanBootstrapState.device, NULL);
+	}
+	if (g_vulkanBootstrapState.surface != 0)
+	{
+		vkDestroySurfaceKHR(g_vulkanBootstrapState.instance, g_vulkanBootstrapState.surface, NULL);
+	}
+	if (g_vulkanBootstrapState.instance != 0)
+	{
+		vkDestroyInstance(g_vulkanBootstrapState.instance, NULL);
+	}
+
+	g_vulkanBootstrapState.instance = 0;
+	g_vulkanBootstrapState.surface = 0;
+	g_vulkanBootstrapState.physicalDevice = 0;
+	g_vulkanBootstrapState.device = 0;
+	g_vulkanBootstrapState.graphicsQueue = 0;
+	g_vulkanBootstrapState.graphicsQueueFamilyIndex = 0;
+	g_vulkanBootstrapState.swapChain = 0;
+	g_vulkanBootstrapState.swapChainFormat = VK_FORMAT_UNDEFINED;
+	g_vulkanBootstrapState.swapChainExtent.width = 0;
+	g_vulkanBootstrapState.swapChainExtent.height = 0;
+	g_vulkanBootstrapState.gpuName[0] = 0;
+	g_vulkanBootstrapState.initialised = false;
+}
+
+static bool SelectVulkanPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, VkPhysicalDevice *deviceOut, uint32_t *queueFamilyOut, VkPhysicalDeviceProperties *propsOut)
+{
+	uint32_t deviceCount = 0;
+	if (vkEnumeratePhysicalDevices(instance, &deviceCount, NULL) != VK_SUCCESS || deviceCount == 0)
+	{
+		return false;
+	}
+
+	vector<VkPhysicalDevice> devices(deviceCount);
+	if (vkEnumeratePhysicalDevices(instance, &deviceCount, &devices[0]) != VK_SUCCESS)
+	{
+		return false;
+	}
+
+	for (uint32_t deviceIndex = 0; deviceIndex < deviceCount; ++deviceIndex)
+	{
+		VkPhysicalDevice candidate = devices[deviceIndex];
+
+		uint32_t extensionCount = 0;
+		vkEnumerateDeviceExtensionProperties(candidate, NULL, &extensionCount, NULL);
+		if (extensionCount == 0)
+		{
+			continue;
+		}
+
+		vector<VkExtensionProperties> extensions(extensionCount);
+		if (vkEnumerateDeviceExtensionProperties(candidate, NULL, &extensionCount, &extensions[0]) != VK_SUCCESS)
+		{
+			continue;
+		}
+
+		bool hasSwapchain = false;
+		for (uint32_t ext = 0; ext < extensionCount; ++ext)
+		{
+			if (strcmp(extensions[ext].extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0)
+			{
+				hasSwapchain = true;
+				break;
+			}
+		}
+		if (!hasSwapchain)
+		{
+			continue;
+		}
+
+		uint32_t queueFamilyCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(candidate, &queueFamilyCount, NULL);
+		if (queueFamilyCount == 0)
+		{
+			continue;
+		}
+
+		vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(candidate, &queueFamilyCount, &queueFamilies[0]);
+
+		for (uint32_t queueFamilyIndex = 0; queueFamilyIndex < queueFamilyCount; ++queueFamilyIndex)
+		{
+			VkBool32 supportsPresent = VK_FALSE;
+			vkGetPhysicalDeviceSurfaceSupportKHR(candidate, queueFamilyIndex, surface, &supportsPresent);
+
+			if ((queueFamilies[queueFamilyIndex].queueFlags & VK_QUEUE_GRAPHICS_BIT) && supportsPresent)
+			{
+				if (propsOut)
+				{
+					vkGetPhysicalDeviceProperties(candidate, propsOut);
+				}
+				*deviceOut = candidate;
+				*queueFamilyOut = queueFamilyIndex;
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+static HRESULT CreateVulkanBootstrap(HWND hWnd, UINT width, UINT height)
+{
+	CleanupVulkanBootstrap();
+
+	const char *instanceExtensions[] =
+	{
+		VK_KHR_SURFACE_EXTENSION_NAME,
+		VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+	};
+
+	VkApplicationInfo appInfo;
+	ZeroMemory(&appInfo, sizeof(appInfo));
+	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+	appInfo.pApplicationName = "MinecraftClient";
+	appInfo.applicationVersion = VK_MAKE_API_VERSION(0, 1, 0, 0);
+	appInfo.pEngineName = "4JLegacy";
+	appInfo.engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 0);
+	appInfo.apiVersion = VK_API_VERSION_1_0;
+
+	VkInstanceCreateInfo instanceInfo;
+	ZeroMemory(&instanceInfo, sizeof(instanceInfo));
+	instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+	instanceInfo.pApplicationInfo = &appInfo;
+	instanceInfo.enabledExtensionCount = ARRAYSIZE(instanceExtensions);
+	instanceInfo.ppEnabledExtensionNames = instanceExtensions;
+
+	VkResult vkResult = vkCreateInstance(&instanceInfo, NULL, &g_vulkanBootstrapState.instance);
+	if (vkResult != VK_SUCCESS)
+	{
+		app.DebugPrintf("Vulkan bootstrap: vkCreateInstance failed (%s)\n", VkResultToString(vkResult));
+		return E_FAIL;
+	}
+
+	VkWin32SurfaceCreateInfoKHR surfaceInfo;
+	ZeroMemory(&surfaceInfo, sizeof(surfaceInfo));
+	surfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+	surfaceInfo.hinstance = GetModuleHandle(NULL);
+	surfaceInfo.hwnd = hWnd;
+	vkResult = vkCreateWin32SurfaceKHR(g_vulkanBootstrapState.instance, &surfaceInfo, NULL, &g_vulkanBootstrapState.surface);
+	if (vkResult != VK_SUCCESS)
+	{
+		app.DebugPrintf("Vulkan bootstrap: vkCreateWin32SurfaceKHR failed (%s)\n", VkResultToString(vkResult));
+		CleanupVulkanBootstrap();
+		return E_FAIL;
+	}
+
+	VkPhysicalDeviceProperties gpuProperties;
+	ZeroMemory(&gpuProperties, sizeof(gpuProperties));
+	if (!SelectVulkanPhysicalDevice(g_vulkanBootstrapState.instance, g_vulkanBootstrapState.surface, &g_vulkanBootstrapState.physicalDevice, &g_vulkanBootstrapState.graphicsQueueFamilyIndex, &gpuProperties))
+	{
+		app.DebugPrintf("Vulkan bootstrap: no suitable physical device found\n");
+		CleanupVulkanBootstrap();
+		return E_FAIL;
+	}
+	strncpy_s(g_vulkanBootstrapState.gpuName, sizeof(g_vulkanBootstrapState.gpuName), gpuProperties.deviceName, _TRUNCATE);
+
+	float queuePriority = 1.0f;
+	VkDeviceQueueCreateInfo queueInfo;
+	ZeroMemory(&queueInfo, sizeof(queueInfo));
+	queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	queueInfo.queueFamilyIndex = g_vulkanBootstrapState.graphicsQueueFamilyIndex;
+	queueInfo.queueCount = 1;
+	queueInfo.pQueuePriorities = &queuePriority;
+
+	const char *deviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+	VkDeviceCreateInfo deviceInfo;
+	ZeroMemory(&deviceInfo, sizeof(deviceInfo));
+	deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	deviceInfo.queueCreateInfoCount = 1;
+	deviceInfo.pQueueCreateInfos = &queueInfo;
+	deviceInfo.enabledExtensionCount = ARRAYSIZE(deviceExtensions);
+	deviceInfo.ppEnabledExtensionNames = deviceExtensions;
+
+	vkResult = vkCreateDevice(g_vulkanBootstrapState.physicalDevice, &deviceInfo, NULL, &g_vulkanBootstrapState.device);
+	if (vkResult != VK_SUCCESS)
+	{
+		app.DebugPrintf("Vulkan bootstrap: vkCreateDevice failed (%s)\n", VkResultToString(vkResult));
+		CleanupVulkanBootstrap();
+		return E_FAIL;
+	}
+
+	vkGetDeviceQueue(g_vulkanBootstrapState.device, g_vulkanBootstrapState.graphicsQueueFamilyIndex, 0, &g_vulkanBootstrapState.graphicsQueue);
+
+	uint32_t formatCount = 0;
+	vkResult = vkGetPhysicalDeviceSurfaceFormatsKHR(g_vulkanBootstrapState.physicalDevice, g_vulkanBootstrapState.surface, &formatCount, NULL);
+	if (vkResult != VK_SUCCESS || formatCount == 0)
+	{
+		app.DebugPrintf("Vulkan bootstrap: surface formats unavailable (%s)\n", VkResultToString(vkResult));
+		CleanupVulkanBootstrap();
+		return E_FAIL;
+	}
+
+	vector<VkSurfaceFormatKHR> formats(formatCount);
+	vkResult = vkGetPhysicalDeviceSurfaceFormatsKHR(g_vulkanBootstrapState.physicalDevice, g_vulkanBootstrapState.surface, &formatCount, &formats[0]);
+	if (vkResult != VK_SUCCESS)
+	{
+		app.DebugPrintf("Vulkan bootstrap: failed to read surface formats (%s)\n", VkResultToString(vkResult));
+		CleanupVulkanBootstrap();
+		return E_FAIL;
+	}
+
+	VkSurfaceFormatKHR selectedFormat = formats[0];
+	for (uint32_t i = 0; i < formatCount; ++i)
+	{
+		if (formats[i].format == VK_FORMAT_B8G8R8A8_UNORM && formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+		{
+			selectedFormat = formats[i];
+			break;
+		}
+	}
+
+	VkSurfaceCapabilitiesKHR surfaceCaps;
+	ZeroMemory(&surfaceCaps, sizeof(surfaceCaps));
+	vkResult = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(g_vulkanBootstrapState.physicalDevice, g_vulkanBootstrapState.surface, &surfaceCaps);
+	if (vkResult != VK_SUCCESS)
+	{
+		app.DebugPrintf("Vulkan bootstrap: failed to read surface capabilities (%s)\n", VkResultToString(vkResult));
+		CleanupVulkanBootstrap();
+		return E_FAIL;
+	}
+
+	uint32_t presentModeCount = 0;
+	vkResult = vkGetPhysicalDeviceSurfacePresentModesKHR(g_vulkanBootstrapState.physicalDevice, g_vulkanBootstrapState.surface, &presentModeCount, NULL);
+	if (vkResult != VK_SUCCESS || presentModeCount == 0)
+	{
+		app.DebugPrintf("Vulkan bootstrap: present modes unavailable (%s)\n", VkResultToString(vkResult));
+		CleanupVulkanBootstrap();
+		return E_FAIL;
+	}
+
+	vector<VkPresentModeKHR> presentModes(presentModeCount);
+	vkResult = vkGetPhysicalDeviceSurfacePresentModesKHR(g_vulkanBootstrapState.physicalDevice, g_vulkanBootstrapState.surface, &presentModeCount, &presentModes[0]);
+	if (vkResult != VK_SUCCESS)
+	{
+		app.DebugPrintf("Vulkan bootstrap: failed to read present modes (%s)\n", VkResultToString(vkResult));
+		CleanupVulkanBootstrap();
+		return E_FAIL;
+	}
+
+	VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+	for (uint32_t i = 0; i < presentModeCount; ++i)
+	{
+		if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR)
+		{
+			presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+			break;
+		}
+	}
+
+	VkExtent2D extent;
+	if (surfaceCaps.currentExtent.width != 0xFFFFFFFF)
+	{
+		extent = surfaceCaps.currentExtent;
+	}
+	else
+	{
+		extent.width = width;
+		extent.height = height;
+		if (extent.width < surfaceCaps.minImageExtent.width) extent.width = surfaceCaps.minImageExtent.width;
+		if (extent.width > surfaceCaps.maxImageExtent.width) extent.width = surfaceCaps.maxImageExtent.width;
+		if (extent.height < surfaceCaps.minImageExtent.height) extent.height = surfaceCaps.minImageExtent.height;
+		if (extent.height > surfaceCaps.maxImageExtent.height) extent.height = surfaceCaps.maxImageExtent.height;
+	}
+
+	uint32_t imageCount = surfaceCaps.minImageCount + 1;
+	if (surfaceCaps.maxImageCount > 0 && imageCount > surfaceCaps.maxImageCount)
+	{
+		imageCount = surfaceCaps.maxImageCount;
+	}
+
+	VkSwapchainCreateInfoKHR swapchainInfo;
+	ZeroMemory(&swapchainInfo, sizeof(swapchainInfo));
+	swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapchainInfo.surface = g_vulkanBootstrapState.surface;
+	swapchainInfo.minImageCount = imageCount;
+	swapchainInfo.imageFormat = selectedFormat.format;
+	swapchainInfo.imageColorSpace = selectedFormat.colorSpace;
+	swapchainInfo.imageExtent = extent;
+	swapchainInfo.imageArrayLayers = 1;
+	swapchainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	swapchainInfo.preTransform = surfaceCaps.currentTransform;
+	swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	swapchainInfo.presentMode = presentMode;
+	swapchainInfo.clipped = VK_TRUE;
+	swapchainInfo.oldSwapchain = 0;
+
+	vkResult = vkCreateSwapchainKHR(g_vulkanBootstrapState.device, &swapchainInfo, NULL, &g_vulkanBootstrapState.swapChain);
+	if (vkResult != VK_SUCCESS)
+	{
+		app.DebugPrintf("Vulkan bootstrap: vkCreateSwapchainKHR failed (%s)\n", VkResultToString(vkResult));
+		CleanupVulkanBootstrap();
+		return E_FAIL;
+	}
+
+	g_vulkanBootstrapState.swapChainFormat = selectedFormat.format;
+	g_vulkanBootstrapState.swapChainExtent = extent;
+	g_vulkanBootstrapState.initialised = true;
+	return S_OK;
+}
+
+static bool ParseRendererBackend(const char *value, ERendererBackend *backendOut)
+{
+	if (!value || !*value || !backendOut)
+		return false;
+
+	if (_stricmp(value, "vulkan") == 0 || _stricmp(value, "vk") == 0)
+	{
+		*backendOut = RENDERER_BACKEND_VULKAN;
+		return true;
+	}
+	if (_stricmp(value, "d3d11") == 0 || _stricmp(value, "dx11") == 0)
+	{
+		*backendOut = RENDERER_BACKEND_D3D11;
+		return true;
+	}
+	return false;
+}
+
+static bool TryGetBackendFromEnv(ERendererBackend *backendOut)
+{
+	char value[32] = { 0 };
+	DWORD chars = GetEnvironmentVariableA("MC_RENDERER", value, ARRAYSIZE(value));
+	if (chars == 0 || chars >= ARRAYSIZE(value))
+		return false;
+
+	return ParseRendererBackend(value, backendOut);
+}
+
+static bool TryGetBackendFromCommandLine(const char *commandLine, ERendererBackend *backendOut)
+{
+	if (!commandLine || !*commandLine || !backendOut)
+		return false;
+
+	const char *option = strstr(commandLine, "-renderer");
+	if (!option)
+		option = strstr(commandLine, "/renderer");
+	if (!option)
+		return false;
+
+	option += 9; // strlen("-renderer")
+	while (*option == ' ' || *option == '\t' || *option == '=')
+		++option;
+	if (!*option)
+		return false;
+
+	char token[32] = { 0 };
+	int i = 0;
+	while (option[i] && option[i] != ' ' && option[i] != '\t' && i < ((int)ARRAYSIZE(token) - 1))
+	{
+		token[i] = option[i];
+		++i;
+	}
+	token[i] = 0;
+
+	return ParseRendererBackend(token, backendOut);
+}
+
+static void SelectRendererBackend(const char *commandLine)
+{
+	ERendererBackend selected = RENDERER_BACKEND_D3D11;
+	if (TryGetBackendFromEnv(&selected))
+	{
+		g_rendererBackendRequested = selected;
+	}
+
+	if (TryGetBackendFromCommandLine(commandLine, &selected))
+	{
+		g_rendererBackendRequested = selected;
+	}
+
+	g_rendererBackendActive = g_rendererBackendRequested;
+	app.DebugPrintf("Renderer backend requested=%s active=%s\n",
+		GetRendererBackendName(g_rendererBackendRequested),
+		GetRendererBackendName(g_rendererBackendActive));
+	PrintRendererStatusToConsole("Selected");
+}
+
+static void ReleaseD3D11Device()
+{
+	if (g_pImmediateContext)
+	{
+		g_pImmediateContext->OMSetRenderTargets(0, NULL, NULL);
+		g_pImmediateContext->ClearState();
+		g_pImmediateContext->Flush();
+	}
+
+	if (g_pRenderTargetView)   { g_pRenderTargetView->Release();   g_pRenderTargetView   = NULL; }
+	if (g_pDepthStencilView)   { g_pDepthStencilView->Release();   g_pDepthStencilView   = NULL; }
+	if (g_pDepthStencilBuffer) { g_pDepthStencilBuffer->Release(); g_pDepthStencilBuffer = NULL; }
+	if (g_pSwapChain)          { g_pSwapChain->Release();          g_pSwapChain          = NULL; }
+	if (g_pImmediateContext)   { g_pImmediateContext->Release();   g_pImmediateContext   = NULL; }
+	if (g_pd3dDevice)          { g_pd3dDevice->Release();          g_pd3dDevice          = NULL; }
+}
+
+static HRESULT CreateD3D11Device(HWND hWnd, UINT width, UINT height)
+{
+	UINT createDeviceFlags = 0;
+#ifdef _DEBUG
+	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
+
+	D3D_DRIVER_TYPE driverTypes[] =
+	{
+		D3D_DRIVER_TYPE_HARDWARE,
+		D3D_DRIVER_TYPE_WARP,
+		D3D_DRIVER_TYPE_REFERENCE,
+	};
+
+	D3D_FEATURE_LEVEL featureLevels[] =
+	{
+		D3D_FEATURE_LEVEL_11_0,
+		D3D_FEATURE_LEVEL_10_1,
+		D3D_FEATURE_LEVEL_10_0,
+	};
+
+	DXGI_SWAP_CHAIN_DESC sd;
+	ZeroMemory(&sd, sizeof(sd));
+	sd.BufferCount = 1;
+	sd.BufferDesc.Width = width;
+	sd.BufferDesc.Height = height;
+	sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	sd.BufferDesc.RefreshRate.Numerator = 60;
+	sd.BufferDesc.RefreshRate.Denominator = 1;
+	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	sd.OutputWindow = hWnd;
+	sd.SampleDesc.Count = 1;
+	sd.SampleDesc.Quality = 0;
+	sd.Windowed = TRUE;
+
+	HRESULT hr = E_FAIL;
+	for (UINT i = 0; i < ARRAYSIZE(driverTypes); ++i)
+	{
+		g_driverType = driverTypes[i];
+		hr = D3D11CreateDeviceAndSwapChain(NULL, g_driverType, NULL, createDeviceFlags,
+			featureLevels, ARRAYSIZE(featureLevels), D3D11_SDK_VERSION,
+			&sd, &g_pSwapChain, &g_pd3dDevice, &g_featureLevel, &g_pImmediateContext);
+		if (SUCCEEDED(hr))
+			break;
+	}
+	if (FAILED(hr))
+		return hr;
+
+	ID3D11Texture2D *pBackBuffer = NULL;
+	hr = g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+	if (FAILED(hr))
+	{
+		ReleaseD3D11Device();
+		return hr;
+	}
+
+	hr = g_pd3dDevice->CreateRenderTargetView(pBackBuffer, NULL, &g_pRenderTargetView);
+	pBackBuffer->Release();
+	if (FAILED(hr))
+	{
+		ReleaseD3D11Device();
+		return hr;
+	}
+
+	D3D11_TEXTURE2D_DESC descDepth;
+	ZeroMemory(&descDepth, sizeof(descDepth));
+	descDepth.Width = width;
+	descDepth.Height = height;
+	descDepth.MipLevels = 1;
+	descDepth.ArraySize = 1;
+	descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	descDepth.SampleDesc.Count = 1;
+	descDepth.SampleDesc.Quality = 0;
+	descDepth.Usage = D3D11_USAGE_DEFAULT;
+	descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+
+	hr = g_pd3dDevice->CreateTexture2D(&descDepth, NULL, &g_pDepthStencilBuffer);
+	if (FAILED(hr))
+	{
+		ReleaseD3D11Device();
+		return hr;
+	}
+
+	D3D11_DEPTH_STENCIL_VIEW_DESC descDSV;
+	ZeroMemory(&descDSV, sizeof(descDSV));
+	descDSV.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	descDSV.Texture2D.MipSlice = 0;
+
+	hr = g_pd3dDevice->CreateDepthStencilView(g_pDepthStencilBuffer, &descDSV, &g_pDepthStencilView);
+	if (FAILED(hr))
+	{
+		ReleaseD3D11Device();
+		return hr;
+	}
+
+	g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDepthStencilView);
+
+	D3D11_VIEWPORT vp;
+	vp.Width = (FLOAT)width;
+	vp.Height = (FLOAT)height;
+	vp.MinDepth = 0.0f;
+	vp.MaxDepth = 1.0f;
+	vp.TopLeftX = 0;
+	vp.TopLeftY = 0;
+	g_pImmediateContext->RSSetViewports(1, &vp);
+
+	return S_OK;
+}
+
+static HRESULT ResizeD3D11Device(HWND hWnd, UINT width, UINT height)
+{
+	ReleaseD3D11Device();
+	return CreateD3D11Device(hWnd, width, height);
+}
+
+static HRESULT CreateActiveRendererDevice(HWND hWnd, UINT width, UINT height)
+{
+	if (g_rendererBackendRequested == RENDERER_BACKEND_VULKAN)
+	{
+		HRESULT vulkanProbeResult = CreateVulkanBootstrap(hWnd, width, height);
+		if (SUCCEEDED(vulkanProbeResult))
+		{
+			app.DebugPrintf("Vulkan bootstrap OK on GPU '%s' (%ux%u)\n",
+				g_vulkanBootstrapState.gpuName,
+				g_vulkanBootstrapState.swapChainExtent.width,
+				g_vulkanBootstrapState.swapChainExtent.height);
+
+			char detail[256];
+			sprintf_s(detail, sizeof(detail), "probe=ok gpu=%s extent=%ux%u",
+				g_vulkanBootstrapState.gpuName,
+				g_vulkanBootstrapState.swapChainExtent.width,
+				g_vulkanBootstrapState.swapChainExtent.height);
+			PrintRendererStatusToConsole("Vulkan", detail);
+		}
+		else
+		{
+			app.DebugPrintf("Vulkan bootstrap failed, continuing with d3d11 compatibility path.\n");
+			PrintRendererStatusToConsole("Vulkan", "probe=failed fallback=d3d11");
+		}
+		CleanupVulkanBootstrap();
+	}
+
+	g_rendererBackendActive = RENDERER_BACKEND_D3D11;
+	HRESULT hr = CreateD3D11Device(hWnd, width, height);
+	if (SUCCEEDED(hr))
+	{
+		PrintRendererStatusToConsole("Startup", "active=d3d11");
+	}
+	return hr;
+}
+
+static HRESULT ResizeActiveRendererDevice(HWND hWnd, UINT width, UINT height)
+{
+	return ResizeD3D11Device(hWnd, width, height);
+}
+
+static void CleanupActiveRendererDevice()
+{
+	CleanupVulkanBootstrap();
+	ReleaseD3D11Device();
+}
+
+static void InitialiseRenderManager()
+{
+	LegacyRendererBridge bridge = GetLegacyRendererBridge();
+	if (bridge.ready)
+	{
+		RenderManager.Initialise(bridge.device, bridge.swapChain);
+	}
+	else
+	{
+		app.DebugPrintf("RenderManager init skipped: legacy renderer bridge is unavailable.\n");
+	}
+}
 
 
 //
@@ -426,94 +1124,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         g_iScreenWidth  = (int)newWidth;
         g_iScreenHeight = (int)newHeight;
 
-        // Full device teardown
-        if (g_pImmediateContext)
-        {
-            g_pImmediateContext->OMSetRenderTargets(0, NULL, NULL);
-            g_pImmediateContext->ClearState();
-            g_pImmediateContext->Flush();
-        }
-        if (g_pRenderTargetView)   { g_pRenderTargetView->Release();   g_pRenderTargetView   = NULL; }
-        if (g_pDepthStencilView)   { g_pDepthStencilView->Release();   g_pDepthStencilView   = NULL; }
-        if (g_pDepthStencilBuffer) { g_pDepthStencilBuffer->Release(); g_pDepthStencilBuffer = NULL; }
-        if (g_pSwapChain)          { g_pSwapChain->Release();          g_pSwapChain          = NULL; }
-        if (g_pImmediateContext)   { g_pImmediateContext->Release();   g_pImmediateContext   = NULL; }
-        if (g_pd3dDevice)          { g_pd3dDevice->Release();          g_pd3dDevice          = NULL; }
-
-        // Rebuild swap chain + device from scratch
-        UINT createDeviceFlags = 0;
-#ifdef _DEBUG
-        createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
-#endif
-        D3D_DRIVER_TYPE driverTypes[] = { D3D_DRIVER_TYPE_HARDWARE, D3D_DRIVER_TYPE_WARP, D3D_DRIVER_TYPE_REFERENCE };
-        D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_10_0 };
-
-        DXGI_SWAP_CHAIN_DESC sd;
-        ZeroMemory(&sd, sizeof(sd));
-        sd.BufferCount                        = 1;
-        sd.BufferDesc.Width                   = newWidth;
-        sd.BufferDesc.Height                  = newHeight;
-        sd.BufferDesc.Format                  = DXGI_FORMAT_R8G8B8A8_UNORM;
-        sd.BufferDesc.RefreshRate.Numerator   = 60;
-        sd.BufferDesc.RefreshRate.Denominator = 1;
-        sd.BufferUsage                        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        sd.OutputWindow                       = hWnd;
-        sd.SampleDesc.Count                   = 1;
-        sd.SampleDesc.Quality                 = 0;
-        sd.Windowed                           = TRUE;
-
-        HRESULT hr = E_FAIL;
-        for (UINT i = 0; i < ARRAYSIZE(driverTypes); i++)
-        {
-            g_driverType = driverTypes[i];
-            hr = D3D11CreateDeviceAndSwapChain(NULL, g_driverType, NULL, createDeviceFlags,
-                featureLevels, ARRAYSIZE(featureLevels), D3D11_SDK_VERSION,
-                &sd, &g_pSwapChain, &g_pd3dDevice, &g_featureLevel, &g_pImmediateContext);
-            if (SUCCEEDED(hr)) break;
-        }
+        HRESULT hr = ResizeActiveRendererDevice(hWnd, newWidth, newHeight);
         if (FAILED(hr))
         {
-            app.DebugPrintf("WM_SIZE device recreate FAILED: 0x%08X\n", hr);
+            app.DebugPrintf("WM_SIZE recreate failed for backend %s: 0x%08X\n", GetRendererBackendName(g_rendererBackendActive), hr);
             break;
         }
-        app.DebugPrintf("WM_SIZE device recreate OK %dx%d\n", newWidth, newHeight);
-
-        // Render target view
-        ID3D11Texture2D *pBackBuffer = NULL;
-        g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
-        g_pd3dDevice->CreateRenderTargetView(pBackBuffer, NULL, &g_pRenderTargetView);
-        pBackBuffer->Release();
-
-        // Depth stencil
-        D3D11_TEXTURE2D_DESC descDepth = {};
-        descDepth.Width              = newWidth;
-        descDepth.Height             = newHeight;
-        descDepth.MipLevels          = 1;
-        descDepth.ArraySize          = 1;
-        descDepth.Format             = DXGI_FORMAT_D24_UNORM_S8_UINT;
-        descDepth.SampleDesc.Count   = 1;
-        descDepth.SampleDesc.Quality = 0;
-        descDepth.Usage              = D3D11_USAGE_DEFAULT;
-        descDepth.BindFlags          = D3D11_BIND_DEPTH_STENCIL;
-        g_pd3dDevice->CreateTexture2D(&descDepth, NULL, &g_pDepthStencilBuffer);
-
-        D3D11_DEPTH_STENCIL_VIEW_DESC descDSV = {};
-        descDSV.Format             = DXGI_FORMAT_D24_UNORM_S8_UINT;
-        descDSV.ViewDimension      = D3D11_DSV_DIMENSION_TEXTURE2D;
-        descDSV.Texture2D.MipSlice = 0;
-        g_pd3dDevice->CreateDepthStencilView(g_pDepthStencilBuffer, &descDSV, &g_pDepthStencilView);
-
-        g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDepthStencilView);
-
-        // Viewport
-        D3D11_VIEWPORT vp;
-        vp.Width    = (FLOAT)newWidth;
-        vp.Height   = (FLOAT)newHeight;
-        vp.MinDepth = 0.0f;
-        vp.MaxDepth = 1.0f;
-        vp.TopLeftX = 0;
-        vp.TopLeftY = 0;
-        g_pImmediateContext->RSSetViewports(1, &vp);
+        app.DebugPrintf("WM_SIZE recreate ok for backend %s (%dx%d)\n", GetRendererBackendName(g_rendererBackendActive), newWidth, newHeight);
 
         Minecraft *pMinecraft = Minecraft::GetInstance();
         if (pMinecraft)
@@ -755,8 +1372,6 @@ LRESULT CALLBACK DlgProc(HWND hWndDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
 
 HRESULT InitDevice()
 {
-	HRESULT hr = S_OK;
-
 	RECT rc;
 	GetClientRect( g_hWnd, &rc );
 	UINT width = rc.right - rc.left;
@@ -764,103 +1379,8 @@ HRESULT InitDevice()
 	//app.DebugPrintf("width: %d, height: %d\n", width, height);
 	width = g_iScreenWidth;
 	height = g_iScreenHeight;
-	app.DebugPrintf("width: %d, height: %d\n", width, height);
-
-	UINT createDeviceFlags = 0;
-#ifdef _DEBUG
-	createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
-#endif
-
-	D3D_DRIVER_TYPE driverTypes[] =
-	{
-		D3D_DRIVER_TYPE_HARDWARE,
-		D3D_DRIVER_TYPE_WARP,
-		D3D_DRIVER_TYPE_REFERENCE,
-	};
-	UINT numDriverTypes = ARRAYSIZE( driverTypes );
-
-	D3D_FEATURE_LEVEL featureLevels[] =
-	{
-		D3D_FEATURE_LEVEL_11_0,
-		D3D_FEATURE_LEVEL_10_1,
-		D3D_FEATURE_LEVEL_10_0,
-	};
-	UINT numFeatureLevels = ARRAYSIZE( featureLevels );
-
-	DXGI_SWAP_CHAIN_DESC sd;
-	ZeroMemory( &sd, sizeof( sd ) );
-	sd.BufferCount = 1;
-	sd.BufferDesc.Width = width;
-	sd.BufferDesc.Height = height;
-	sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	sd.BufferDesc.RefreshRate.Numerator = 60;
-	sd.BufferDesc.RefreshRate.Denominator = 1;
-	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	sd.OutputWindow = g_hWnd;
-	sd.SampleDesc.Count = 1;
-	sd.SampleDesc.Quality = 0;
-	sd.Windowed = TRUE;
-
-	for( UINT driverTypeIndex = 0; driverTypeIndex < numDriverTypes; driverTypeIndex++ )
-	{
-		g_driverType = driverTypes[driverTypeIndex];
-		hr = D3D11CreateDeviceAndSwapChain( NULL, g_driverType, NULL, createDeviceFlags, featureLevels, numFeatureLevels,
-			D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &g_featureLevel, &g_pImmediateContext );
-		if( HRESULT_SUCCEEDED( hr ) )
-			break;
-	}
-	if( FAILED( hr ) )
-		return hr;
-
-	// Create a render target view
-	ID3D11Texture2D* pBackBuffer = NULL;
-	hr = g_pSwapChain->GetBuffer( 0, __uuidof( ID3D11Texture2D ), ( LPVOID* )&pBackBuffer );
-	if( FAILED( hr ) )
-		return hr;
-
-	// Create a depth stencil buffer
-	D3D11_TEXTURE2D_DESC descDepth;
-
-	descDepth.Width = width;
-	descDepth.Height = height;
-	descDepth.MipLevels = 1;
-	descDepth.ArraySize = 1;
-	descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	descDepth.SampleDesc.Count = 1;
-	descDepth.SampleDesc.Quality = 0;
-	descDepth.Usage = D3D11_USAGE_DEFAULT;
-	descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-	descDepth.CPUAccessFlags = 0;
-	descDepth.MiscFlags = 0;
-	hr = g_pd3dDevice->CreateTexture2D(&descDepth, NULL, &g_pDepthStencilBuffer);
-
-	D3D11_DEPTH_STENCIL_VIEW_DESC descDSView;
-	descDSView.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	descDSView.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-	descDSView.Texture2D.MipSlice = 0;
-
-	hr = g_pd3dDevice->CreateDepthStencilView(g_pDepthStencilBuffer, &descDSView, &g_pDepthStencilView);
-
-	hr = g_pd3dDevice->CreateRenderTargetView( pBackBuffer, NULL, &g_pRenderTargetView );
-	pBackBuffer->Release();
-	if( FAILED( hr ) )
-		return hr;
-
-	g_pImmediateContext->OMSetRenderTargets( 1, &g_pRenderTargetView, g_pDepthStencilView );
-
-	// Setup the viewport
-	D3D11_VIEWPORT vp;
-	vp.Width = (FLOAT)width;
-	vp.Height = (FLOAT)height;
-	vp.MinDepth = 0.0f;
-	vp.MaxDepth = 1.0f;
-	vp.TopLeftX = 0;
-	vp.TopLeftY = 0;
-	g_pImmediateContext->RSSetViewports( 1, &vp );
-
-	RenderManager.Initialise(g_pd3dDevice, g_pSwapChain);
-
-	return S_OK;
+	app.DebugPrintf("InitDevice backend=%s width=%d height=%d\n", GetRendererBackendName(g_rendererBackendActive), width, height);
+	return CreateActiveRendererDevice(g_hWnd, width, height);
 }
 
 //--------------------------------------------------------------------------------------
@@ -883,12 +1403,7 @@ void CleanupDevice()
 	extern void Windows64_RestoreGamma();
 	Windows64_RestoreGamma();
 
-	if( g_pImmediateContext ) g_pImmediateContext->ClearState();
-
-	if( g_pRenderTargetView ) g_pRenderTargetView->Release();
-	if( g_pSwapChain ) g_pSwapChain->Release();
-	if( g_pImmediateContext ) g_pImmediateContext->Release();
-	if( g_pd3dDevice ) g_pd3dDevice->Release();
+	CleanupActiveRendererDevice();
 }
 
 
@@ -907,7 +1422,11 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 #endif
 
 	UNREFERENCED_PARAMETER(hPrevInstance);
-	UNREFERENCED_PARAMETER(lpCmdLine);
+	char cmdLineA[1024] = { 0 };
+	if (lpCmdLine)
+	{
+		strncpy_s(cmdLineA, sizeof(cmdLineA), lpCmdLine, _TRUNCATE);
+	}
 
 	if(lpCmdLine)
 	{
@@ -932,9 +1451,6 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 			//g_iScreenHeight = 544;
 		}
 
-		char cmdLineA[1024];
-		strncpy_s(cmdLineA, sizeof(cmdLineA), lpCmdLine, _TRUNCATE);
-
 		char *nameArg = strstr(cmdLineA, "-name ");
 		if (nameArg)
 		{
@@ -957,6 +1473,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	}
 
 	MultiByteToWideChar(CP_ACP, 0, g_Win64Username, -1, g_Win64UsernameW, 17);
+	SelectRendererBackend(cmdLineA);
 
 	// Initialize global strings
 	MyRegisterClass(hInstance);
@@ -1027,12 +1544,38 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	}
 
 #endif
+	{
+		wchar_t exePath[MAX_PATH] = { 0 };
+		if (GetModuleFileNameW(NULL, exePath, MAX_PATH))
+		{
+			wstring exeDir(exePath);
+			size_t lastSlash = exeDir.find_last_of(L"\\/");
+			if (lastSlash != wstring::npos)
+			{
+				exeDir = exeDir.substr(0, lastSlash);
+			}
+
+			wstring contentRoot = exeDir + L"\\..\\..\\Minecraft.Client";
+			wstring fontProbe = contentRoot + L"\\Common\\res\\font\\Mojangles_7.png";
+			if (GetFileAttributesW(fontProbe.c_str()) != INVALID_FILE_ATTRIBUTES)
+			{
+				SetCurrentDirectoryW(contentRoot.c_str());
+			}
+		}
+	}
 	app.loadMediaArchive();
 
-	RenderManager.Initialise(g_pd3dDevice, g_pSwapChain);
+	InitialiseRenderManager();
 
 	app.loadStringTable();
-	ui.init(g_pd3dDevice,g_pImmediateContext,g_pRenderTargetView,g_pDepthStencilView,g_iScreenWidth,g_iScreenHeight);
+	LegacyRendererBridge bridge = GetLegacyRendererBridge();
+	if (!bridge.ready)
+	{
+		app.DebugPrintf("UI init failed: legacy renderer bridge is unavailable.\n");
+		CleanupDevice();
+		return 0;
+	}
+	ui.init(bridge.device, bridge.context, bridge.renderTargetView, bridge.depthStencilView, g_iScreenWidth, g_iScreenHeight);
 
 	////////////////
 	// Initialise //
@@ -1557,7 +2100,8 @@ ui.render();
 
 	// Free resources, unregister custom classes, and exit.
 	//	app.Uninit();
-	g_pd3dDevice->Release();
+	CleanupDevice();
+	return 0;
 }
 
 #ifdef MEMORY_TRACKING
