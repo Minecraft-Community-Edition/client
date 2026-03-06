@@ -80,6 +80,8 @@ enum EUIScene
 	eUIComponent_Chat,
 	eUIScene_ReinstallMenu,
 	eUIScene_SkinSelectMenu,
+	eUIScene_CustomizeCharacterMenu,
+	eUIScene_CapeSelectMenu,
 	eUIScene_TextEntry,
 	eUIScene_InGameHostOptionsMenu,
 	eUIScene_InGamePlayerOptionsMenu,

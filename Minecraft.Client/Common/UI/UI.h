@@ -84,6 +84,8 @@
 #include "UIScene_SettingsGraphicsMenu.h"
 #include "UIScene_SettingsUIMenu.h"
 #include "UIScene_SkinSelectMenu.h"
+#include "UIScene_CustomizeCharacterMenu.h"
+#include "UIScene_CapeSelectMenu.h"
 #include "UIScene_HowToPlayMenu.h"
 #include "UIScene_HowToPlay.h"
 #include "UIScene_ControlsMenu.h"

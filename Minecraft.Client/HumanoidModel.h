@@ -50,6 +50,7 @@ public:
 
 
 	void _init(float g, float yOffset, int texWidth, int texHeight);	// 4J added
+	void _reinit(int newTexWidth, int newTexHeight); // fixes 64x64 skins
     HumanoidModel();
     HumanoidModel(float g);
     HumanoidModel(float g, float yOffset, int texWidth, int texHeight);

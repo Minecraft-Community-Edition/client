@@ -4145,6 +4145,35 @@ void CMinecraftApp::loadMediaArchive()
 	if (!mediapath.empty()) 
 	{
 		m_mediaArchive = new ArchiveFile( File(mediapath) );
+#ifdef _WINDOWS64
+
+		{
+
+			vector<wstring>* fileList = m_mediaArchive->getFileList();
+
+			for (AUTO_VAR(it, fileList->begin()); it != fileList->end(); ++it)
+
+			{
+
+				const wstring& name = *it;
+
+				if (name.size() >= 7 && (name.substr(0, 7) == L"dlccape" || name.substr(0, 7) == L"defskin"))
+
+				{
+
+					byteArray data = m_mediaArchive->getFile(name);
+
+					AddMemoryTextureFile(name, data.data, data.length);
+
+				}
+
+			}
+
+			delete fileList;
+
+		}
+
+#endif
 	}
 #if 0
 	string path = "Common\\media.arc";

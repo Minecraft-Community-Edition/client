@@ -279,6 +279,12 @@ bool UILayer::NavigateToScene(int iPad, EUIScene scene, void *initData)
 	case eUIScene_SkinSelectMenu:
 		newScene = new UIScene_SkinSelectMenu(iPad, initData, this);
 		break;
+	case eUIScene_CustomizeCharacterMenu:
+		newScene = new UIScene_CustomizeCharacterMenu(iPad, initData, this);
+		break;
+	case eUIScene_CapeSelectMenu:
+		newScene = new UIScene_CapeSelectMenu(iPad, initData, this);
+		break;
 	case eUIScene_HowToPlayMenu:
 		newScene = new UIScene_HowToPlayMenu(iPad, initData, this);
 		break;

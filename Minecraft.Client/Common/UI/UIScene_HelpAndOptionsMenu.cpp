@@ -10,7 +10,7 @@ UIScene_HelpAndOptionsMenu::UIScene_HelpAndOptionsMenu(int iPad, void *initData,
 
 	m_bNotInGame=(Minecraft::GetInstance()->level==NULL);
 
-	m_buttons[BUTTON_HAO_CHANGESKIN].init(app.GetString(IDS_CHANGE_SKIN),BUTTON_HAO_CHANGESKIN);
+	m_buttons[BUTTON_HAO_CHANGESKIN].init(L"Customize Character",BUTTON_HAO_CHANGESKIN);
 	m_buttons[BUTTON_HAO_HOWTOPLAY].init(app.GetString(IDS_HOW_TO_PLAY),BUTTON_HAO_HOWTOPLAY);
 	m_buttons[BUTTON_HAO_CONTROLS].init(app.GetString(IDS_CONTROLS),BUTTON_HAO_CONTROLS);
 	m_buttons[BUTTON_HAO_SETTINGS].init(app.GetString(IDS_SETTINGS),BUTTON_HAO_SETTINGS);
@@ -209,7 +209,7 @@ void UIScene_HelpAndOptionsMenu::handlePress(F64 controlId, F64 childId)
 	switch((int)controlId)
 	{
 	case BUTTON_HAO_CHANGESKIN:
-		ui.NavigateToScene(m_iPad, eUIScene_SkinSelectMenu);
+		ui.NavigateToScene(m_iPad, eUIScene_CustomizeCharacterMenu);
 		break;
 	case BUTTON_HAO_HOWTOPLAY:
 		ui.NavigateToScene(m_iPad, eUIScene_HowToPlayMenu);

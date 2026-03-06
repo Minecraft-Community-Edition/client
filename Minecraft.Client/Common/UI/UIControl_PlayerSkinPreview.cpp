@@ -68,7 +68,7 @@ void UIControl_PlayerSkinPreview::tick()
 		++m_framesAnimatingRotation;
 		m_yRot = m_fOriginalRotation + m_framesAnimatingRotation * ( (m_fTargetRotation - m_fOriginalRotation) / CHANGING_SKIN_FRAMES );
 
-		//if(m_framesAnimatingRotation == CHANGING_SKIN_FRAMES) m_bAnimatingToFacing = false;
+		if(m_framesAnimatingRotation == CHANGING_SKIN_FRAMES) m_bAnimatingToFacing = false;
 	}
 	else
 	{
@@ -149,6 +149,28 @@ void UIControl_PlayerSkinPreview::SetFacing(ESkinPreviewFacing facing, bool bAni
 	case e_SkinPreviewFacing_Right:
 		m_fTargetRotation = LOOK_RIGHT_EXTENT;
 		m_bRotatingLeft = true;
+		break;
+	case e_SkinPreviewFacing_Backward:
+		m_fTargetRotation = (m_yRot < 0) ? -180.0f : 180.0f;
+		m_bRotatingLeft = (m_fTargetRotation > 0);
+		break;
+	case e_SkinPreviewFacing_BackLeft:
+		{
+			float diff = 135.0f - (float)m_yRot;
+			if(diff >  180.0f) diff -= 360.0f;
+			if(diff < -180.0f) diff += 360.0f;
+			m_fTargetRotation = (float)m_yRot + diff;
+			m_bRotatingLeft = (diff > 0);
+		}
+		break;
+	case e_SkinPreviewFacing_BackRight:
+		{
+			float diff = -135.0f - (float)m_yRot;
+			if(diff >  180.0f) diff -= 360.0f;
+			if(diff < -180.0f) diff += 360.0f;
+			m_fTargetRotation = (float)m_yRot + diff;
+			m_bRotatingLeft = (diff > 0);
+		}
 		break;
 	}
 

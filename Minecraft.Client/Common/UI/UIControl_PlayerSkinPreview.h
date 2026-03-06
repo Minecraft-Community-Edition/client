@@ -59,6 +59,9 @@ public:
 		e_SkinPreviewFacing_Forward,
 		e_SkinPreviewFacing_Left,
 		e_SkinPreviewFacing_Right,
+		e_SkinPreviewFacing_Backward,
+		e_SkinPreviewFacing_BackLeft,
+		e_SkinPreviewFacing_BackRight,
 	};
 
 	UIControl_PlayerSkinPreview();

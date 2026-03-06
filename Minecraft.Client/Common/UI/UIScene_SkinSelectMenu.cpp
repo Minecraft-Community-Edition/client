@@ -229,7 +229,6 @@ void UIScene_SkinSelectMenu::handleInput(int iPad, int key, bool repeat, bool pr
 			{
 			case SKIN_SELECT_PACK_DEFAULT:
 				app.SetPlayerSkin(iPad, m_skinIndex);
-				app.SetPlayerCape(iPad, 0);
 				m_currentSkinPath = app.GetPlayerSkinName(iPad);
 				m_originalSkinId = app.GetPlayerSkinId(iPad);
 				setCharacterSelected(true);
@@ -242,13 +241,13 @@ void UIScene_SkinSelectMenu::handleInput(int iPad, int key, bool repeat, bool pr
 					wchar_t chars[256];
 					swprintf(chars, 256, L"dlcskin%08d.png", app.GetPlayerFavoriteSkin(iPad,m_skinIndex));
 
-					DLCPack *Pack=app.m_dlcManager.getPackContainingSkin(chars);	
+					DLCPack *Pack=app.m_dlcManager.getPackContainingSkin(chars);
 
 					if(Pack)
 					{
 						DLCSkinFile *skinFile = Pack->getSkinFile(chars);
 						app.SetPlayerSkin(iPad, skinFile->getPath());
-						app.SetPlayerCape(iPad, skinFile->getParameterAsString(DLCManager::e_DLCParamType_Cape));
+						{ wstring _cp = skinFile->getParameterAsString(DLCManager::e_DLCParamType_Cape); if(!_cp.empty()) app.SetPlayerCape(iPad, _cp); }
 						setCharacterSelected(true);
 						m_currentSkinPath = app.GetPlayerSkinName(iPad);
 						m_originalSkinId = app.GetPlayerSkinId(iPad);
@@ -373,7 +372,7 @@ void UIScene_SkinSelectMenu::handleInput(int iPad, int key, bool repeat, bool pr
 					else
 					{
 						app.SetPlayerSkin(iPad, skinFile->getPath());
-						app.SetPlayerCape(iPad, skinFile->getParameterAsString(DLCManager::e_DLCParamType_Cape));
+						{ wstring _cp = skinFile->getParameterAsString(DLCManager::e_DLCParamType_Cape); if(!_cp.empty()) app.SetPlayerCape(iPad, _cp); }
 						setCharacterSelected(true);
 						m_currentSkinPath = app.GetPlayerSkinName(iPad);
 						m_originalSkinId = app.GetPlayerSkinId(iPad);
@@ -590,7 +589,7 @@ void UIScene_SkinSelectMenu::InputActionOK(unsigned int iPad)
 			{
 				DLCSkinFile *skinFile = Pack->getSkinFile(chars);
 				app.SetPlayerSkin(iPad, skinFile->getPath());
-				app.SetPlayerCape(iPad, skinFile->getParameterAsString(DLCManager::e_DLCParamType_Cape));
+				{ wstring _cp = skinFile->getParameterAsString(DLCManager::e_DLCParamType_Cape); if(!_cp.empty()) app.SetPlayerCape(iPad, _cp); }
 				setCharacterSelected(true);
 				m_currentSkinPath = app.GetPlayerSkinName(iPad);
 				m_originalSkinId = app.GetPlayerSkinId(iPad);
@@ -682,7 +681,7 @@ void UIScene_SkinSelectMenu::InputActionOK(unsigned int iPad)
 				else
 				{
 					app.SetPlayerSkin(iPad, skinFile->getPath());
-					app.SetPlayerCape(iPad, skinFile->getParameterAsString(DLCManager::e_DLCParamType_Cape));
+					{ wstring _cp = skinFile->getParameterAsString(DLCManager::e_DLCParamType_Cape); if(!_cp.empty()) app.SetPlayerCape(iPad, _cp); }
 					setCharacterSelected(true);
 					m_currentSkinPath = app.GetPlayerSkinName(iPad);
 					m_originalSkinId = app.GetPlayerSkinId(iPad);
@@ -694,7 +693,7 @@ void UIScene_SkinSelectMenu::InputActionOK(unsigned int iPad)
 			else
 			{
 				app.SetPlayerSkin(iPad, skinFile->getPath());
-				app.SetPlayerCape(iPad, skinFile->getParameterAsString(DLCManager::e_DLCParamType_Cape));
+				{ wstring _cp = skinFile->getParameterAsString(DLCManager::e_DLCParamType_Cape); if(!_cp.empty()) app.SetPlayerCape(iPad, _cp); }
 				setCharacterSelected(true);
 				m_currentSkinPath = app.GetPlayerSkinName(iPad);
 				m_originalSkinId = app.GetPlayerSkinId(iPad);
@@ -885,9 +884,10 @@ void UIScene_SkinSelectMenu::handleSkinIndexChanged()
 	}
 
 	m_characters[eCharacter_Current].SetTexture(m_selectedSkinPath, backupTexture);
-	m_characters[eCharacter_Current].SetCapeTexture(m_selectedCapePath);
+	wstring playerCapePath = app.GetPlayerCapeName(m_iPad);
+	m_characters[eCharacter_Current].SetCapeTexture(m_selectedCapePath.empty() ? playerCapePath : m_selectedCapePath);
 
-	showNext = TRUE;		
+	showNext = TRUE;
 	showPrevious = TRUE;
 	nextIndex = getNextSkinIndex(m_skinIndex);
 	previousIndex = getPreviousSkinIndex(m_skinIndex);
@@ -998,7 +998,7 @@ void UIScene_SkinSelectMenu::handleSkinIndexChanged()
 				app.SetAnimOverrideBitmask(skinFile->getSkinID(),skinFile->getAnimOverrideBitmask());
 			}
 			m_characters[eCharacter_Next1 + i].SetTexture(otherSkinPath, backupTexture);
-			m_characters[eCharacter_Next1 + i].SetCapeTexture(otherCapePath);
+			m_characters[eCharacter_Next1 + i].SetCapeTexture(otherCapePath.empty() ? playerCapePath : otherCapePath);
 		}
 
 		nextIndex = getNextSkinIndex(nextIndex);
@@ -1069,7 +1069,7 @@ void UIScene_SkinSelectMenu::handleSkinIndexChanged()
 				app.SetAnimOverrideBitmask(skinFile->getSkinID(),skinFile->getAnimOverrideBitmask());
 			}			
 			m_characters[eCharacter_Previous1 + i].SetTexture(otherSkinPath, backupTexture);
-			m_characters[eCharacter_Previous1 + i].SetCapeTexture(otherCapePath);
+			m_characters[eCharacter_Previous1 + i].SetCapeTexture(otherCapePath.empty() ? playerCapePath : otherCapePath);
 		}
 
 		previousIndex = getPreviousSkinIndex(previousIndex);

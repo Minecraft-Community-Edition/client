@@ -125,18 +125,42 @@ void HumanoidModel::_init(float g, float yOffset, int texWidth, int texHeight)
 	m_uiAnimOverrideBitmask = 0L;
 }
 
+void HumanoidModel::_reinit(int newTexWidth, int newTexHeight)
+{
+	if (newTexWidth == texWidth && newTexHeight == texHeight)
+		return;
+
+	app.DebugPrintf("HumanoidModel::ReinitIfDifferentSize - Reinitialising from (%d x %d) to (%d x %d)\n",
+		texWidth, texHeight, newTexWidth, newTexHeight);
+
+	delete cloak;   cloak = nullptr;
+	delete ear;     ear = nullptr;
+	delete head;    head = nullptr;
+	delete hair;    hair = nullptr;
+	delete body;    body = nullptr;
+	delete arm0;    arm0 = nullptr;
+	delete arm1;    arm1 = nullptr;
+	delete leg0;    leg0 = nullptr;
+	delete leg1;    leg1 = nullptr;
+
+	_init(0, m_fYOffset, newTexWidth, newTexHeight);
+}
+
 HumanoidModel::HumanoidModel() : Model()
 {
+	printf("HumanoidModel::HumanoidModel\n");
 	_init(0, 0, 64, 32);
 }
 
 HumanoidModel::HumanoidModel(float g) : Model()
 {
+	printf("HumanoidModel::HumanoidModel float g\n");
 	_init(g, 0, 64, 32);
 }
 
 HumanoidModel::HumanoidModel(float g, float yOffset, int texWidth, int texHeight) : Model()
 {
+	printf("HumanoidModel::HumanoidModel texWidth, texHeight\n");
 	_init(g,yOffset,texWidth,texHeight);
 }
 

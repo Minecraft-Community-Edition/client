@@ -2502,6 +2502,7 @@ unsigned int UIController::GetWinUserIndex()
 
 void UIController::ShowUIDebugConsole(bool show)
 {
+	printf("ShowUIDebugConsole %d\n", show);
 #ifndef _CONTENT_PACKAGE
 
 	if(show)
