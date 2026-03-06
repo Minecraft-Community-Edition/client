@@ -231,12 +231,7 @@ void Tesselator::useProjectedTexture(bool enable)
 
 void Tesselator::useCompactVertices(bool enable)
 {
-#if defined(_WIN32) && !defined(_XBOX) && !defined(_XBOX_ONE)
-	// windows vulkan: keep compact off for now, decoder not finished.
-	useCompactFormat360 = false;
-#else
 	useCompactFormat360 = enable;
-#endif
 }
 
 bool Tesselator::getCompactVertices()
