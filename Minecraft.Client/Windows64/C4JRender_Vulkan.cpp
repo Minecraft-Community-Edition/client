@@ -205,7 +205,6 @@ struct RecordedDrawCall {
   // Pre-expanded to BootstrapVertex layout (RGBA + triangle list) for fast replay.
   std::vector<uint8_t> preparedVertexData;
   uint32_t preparedVertexCount;
-  bool fullStateList;
   bool hasLocalModelMatrix;
   float localModelMatrix[16];
   bool useCapturedState;
@@ -238,7 +237,6 @@ static thread_local std::vector<RecordedDrawCall> g_vkRecordingScratch;
 static thread_local bool g_vkRecordingHasStateChanges = false;
 static thread_local bool g_vkRecordingHasTextureStateChanges = false;
 static thread_local bool g_vkRecordingHasAlphaStateChanges = false;
-static thread_local bool g_vkRecordingFullStateList = false;
 static thread_local bool g_vkRecordingBaseModelValid = false;
 static thread_local float g_vkRecordingBaseModelInv[16];
 
@@ -1809,7 +1807,6 @@ static void destroyVulkanRuntime() {
   g_vkRecordingHasStateChanges = false;
   g_vkRecordingHasTextureStateChanges = false;
   g_vkRecordingHasAlphaStateChanges = false;
-  g_vkRecordingFullStateList = false;
   g_vkInitialized = false;
 }
 
@@ -3749,8 +3746,7 @@ static uint32_t expandVertexStreamToBootstrap(
     const float z = static_cast<float>(s[2]) / 1024.0f;
     const uint16_t encodedColour = static_cast<uint16_t>(s[3]);
     const uint16_t packed565 = static_cast<uint16_t>(encodedColour + 32768u);
-    // Compact path can also carry the legacy "no mip" u+1 marker.
-    const float u = decodeLegacyNoMipmapU(static_cast<float>(s[4]) / 8192.0f);
+    const float u = static_cast<float>(s[4]) / 8192.0f;
     const float v = static_cast<float>(s[5]) / 8192.0f;
     uint8_t r = 255, g = 255, b = 255, a = 255;
     unpack565ToRGBA(packed565, r, g, b, a);
@@ -3852,7 +3848,6 @@ void C4JRender::DrawVertices(ePrimitiveType primitiveType, int count,
     call.vType = vType;
     call.psType = psType;
     call.preparedVertexCount = 0;
-    call.fullStateList = g_vkRecordingFullStateList;
     call.hasLocalModelMatrix = true;
     const float *recordModelView = MatrixGet(GL_MODELVIEW_MATRIX);
     if (recordModelView != nullptr && g_vkRecordingBaseModelValid) {
@@ -3863,8 +3858,7 @@ void C4JRender::DrawVertices(ePrimitiveType primitiveType, int count,
     } else {
       mat4_identity(call.localModelMatrix);
     }
-    call.useCapturedState =
-        g_vkRecordingFullStateList && g_vkRecordingHasStateChanges;
+    call.useCapturedState = g_vkRecordingHasStateChanges;
     call.depthTestEnable = g_vkStateDepthTestEnable;
     call.depthWriteEnable = g_vkStateDepthWriteEnable;
     call.depthCompareOp = g_vkStateDepthCompareOp;
@@ -3877,11 +3871,9 @@ void C4JRender::DrawVertices(ePrimitiveType primitiveType, int count,
     std::memcpy(call.blendConstants, g_vkStateBlendConstants,
                 sizeof(call.blendConstants));
     // bug we hit: replaying compile-time textureId broke chunk textures.
-    call.captureTextureState =
-        g_vkRecordingFullStateList && g_vkRecordingHasTextureStateChanges;
+    call.captureTextureState = g_vkRecordingHasTextureStateChanges;
     call.textureId = g_vkStateTextureId;
-    call.captureAlphaState =
-        g_vkRecordingFullStateList && g_vkRecordingHasAlphaStateChanges;
+    call.captureAlphaState = g_vkRecordingHasAlphaStateChanges;
     call.alphaTestEnable = g_vkStateAlphaTestEnable;
     call.alphaFunc = g_vkStateAlphaFunc;
     call.alphaRef = g_vkStateAlphaRef;
@@ -3972,11 +3964,11 @@ void C4JRender::CBuffDelete(int first, int count) {
     g_vkRecordingHasStateChanges = false;
     g_vkRecordingHasTextureStateChanges = false;
     g_vkRecordingHasAlphaStateChanges = false;
-    g_vkRecordingFullStateList = false;
     g_vkRecordingBaseModelValid = false;
   }
 }
 void C4JRender::CBuffStart(int index, bool full) {
+  (void)full;
   ensureThreadLocalMatrixStacksInitialised();
   g_vkIsRecordingCommandList = true;
   g_vkRecordingCommandListIndex = index;
@@ -3989,7 +3981,6 @@ void C4JRender::CBuffStart(int index, bool full) {
   g_vkRecordingHasStateChanges = false;
   g_vkRecordingHasTextureStateChanges = false;
   g_vkRecordingHasAlphaStateChanges = false;
-  g_vkRecordingFullStateList = full;
   const float *baseModel = MatrixGet(GL_MODELVIEW_MATRIX);
   if (baseModel != nullptr) {
     g_vkRecordingBaseModelValid =
@@ -4038,7 +4029,6 @@ void C4JRender::CBuffEnd() {
   g_vkRecordingHasStateChanges = false;
   g_vkRecordingHasTextureStateChanges = false;
   g_vkRecordingHasAlphaStateChanges = false;
-  g_vkRecordingFullStateList = false;
   g_vkRecordingBaseModelValid = false;
 }
 bool C4JRender::CBuffCall(int index, bool) {
@@ -4073,7 +4063,6 @@ bool C4JRender::CBuffCall(int index, bool) {
 
   const bool wasRecording = g_vkIsRecordingCommandList;
   const int oldRecordingIndex = g_vkRecordingCommandListIndex;
-  const bool oldRecordingFullStateList = g_vkRecordingFullStateList;
   const bool oldDepthTestEnable = g_vkStateDepthTestEnable;
   const bool oldDepthWriteEnable = g_vkStateDepthWriteEnable;
   const VkCompareOp oldDepthCompareOp = g_vkStateDepthCompareOp;
@@ -4093,12 +4082,11 @@ bool C4JRender::CBuffCall(int index, bool) {
                                 g_vkStateBlendConstants[3]};
   g_vkIsRecordingCommandList = false;
   g_vkRecordingCommandListIndex = -1;
-  g_vkRecordingFullStateList = false;
 
   for (const RecordedDrawCall &call : *calls) {
     if (call.vertexData.empty() || call.count <= 0)
       continue;
-    if (call.fullStateList && call.useCapturedState) {
+    if (call.useCapturedState) {
       g_vkStateDepthTestEnable = call.depthTestEnable;
       g_vkStateDepthWriteEnable = call.depthWriteEnable;
       g_vkStateDepthCompareOp = call.depthCompareOp;
@@ -4111,11 +4099,11 @@ bool C4JRender::CBuffCall(int index, bool) {
       std::memcpy(g_vkStateBlendConstants, call.blendConstants,
                   sizeof(call.blendConstants));
     }
-    if (call.fullStateList && call.captureTextureState) {
+    if (call.captureTextureState) {
       // only change texture state if this draw recorded a TextureBind.
       g_vkStateTextureId = call.textureId;
     }
-    if (call.fullStateList && call.captureAlphaState) {
+    if (call.captureAlphaState) {
       g_vkStateAlphaTestEnable = call.alphaTestEnable;
       g_vkStateAlphaFunc = call.alphaFunc;
       g_vkStateAlphaRef = call.alphaRef;
@@ -4168,7 +4156,6 @@ bool C4JRender::CBuffCall(int index, bool) {
               sizeof(oldBlendConstants));
   g_vkIsRecordingCommandList = wasRecording;
   g_vkRecordingCommandListIndex = oldRecordingIndex;
-  g_vkRecordingFullStateList = oldRecordingFullStateList;
   return true;
 }
 void C4JRender::CBuffTick() {}
@@ -4219,7 +4206,7 @@ void C4JRender::TextureFree(int idx) {
 void C4JRender::TextureBind(int idx) {
   g_vkStateTextureId = idx;
   // record that this bind happened, so replay uses it.
-  if (g_vkIsRecordingCommandList && g_vkRecordingFullStateList)
+  if (g_vkIsRecordingCommandList)
     g_vkRecordingHasTextureStateChanges = true;
   if (idx < 0)
     return;
@@ -4520,18 +4507,18 @@ void C4JRender::StateSetColour(float r, float g, float b, float a) {
 }
 void C4JRender::StateSetDepthMask(bool enable) {
   g_vkStateDepthWriteEnable = enable;
-  if (g_vkIsRecordingCommandList && g_vkRecordingFullStateList)
+  if (g_vkIsRecordingCommandList)
     g_vkRecordingHasStateChanges = true;
 }
 void C4JRender::StateSetBlendEnable(bool enable) {
   g_vkStateBlendEnable = enable;
-  if (g_vkIsRecordingCommandList && g_vkRecordingFullStateList)
+  if (g_vkIsRecordingCommandList)
     g_vkRecordingHasStateChanges = true;
 }
 void C4JRender::StateSetBlendFunc(int src, int dst) {
   g_vkStateSrcBlendFactor = mapBlendFactorToVk(src);
   g_vkStateDstBlendFactor = mapBlendFactorToVk(dst);
-  if (g_vkIsRecordingCommandList && g_vkRecordingFullStateList)
+  if (g_vkIsRecordingCommandList)
     g_vkRecordingHasStateChanges = true;
 }
 void C4JRender::StateSetBlendFactor(unsigned int colour) {
@@ -4543,28 +4530,28 @@ void C4JRender::StateSetBlendFactor(unsigned int colour) {
   g_vkStateBlendConstants[1] = g;
   g_vkStateBlendConstants[2] = b;
   g_vkStateBlendConstants[3] = a;
-  if (g_vkIsRecordingCommandList && g_vkRecordingFullStateList)
+  if (g_vkIsRecordingCommandList)
     g_vkRecordingHasStateChanges = true;
 }
 void C4JRender::StateSetAlphaFunc(int func, float param) {
   g_vkStateAlphaFunc = func;
   g_vkStateAlphaRef = param;
-  if (g_vkIsRecordingCommandList && g_vkRecordingFullStateList)
+  if (g_vkIsRecordingCommandList)
     g_vkRecordingHasAlphaStateChanges = true;
 }
 void C4JRender::StateSetDepthFunc(int func) {
   g_vkStateDepthCompareOp = mapDepthFuncToVk(func);
-  if (g_vkIsRecordingCommandList && g_vkRecordingFullStateList)
+  if (g_vkIsRecordingCommandList)
     g_vkRecordingHasStateChanges = true;
 }
 void C4JRender::StateSetFaceCull(bool enable) {
   g_vkStateCullEnable = enable;
-  if (g_vkIsRecordingCommandList && g_vkRecordingFullStateList)
+  if (g_vkIsRecordingCommandList)
     g_vkRecordingHasStateChanges = true;
 }
 void C4JRender::StateSetFaceCullCW(bool enable) {
   g_vkStateCullClockwise = enable;
-  if (g_vkIsRecordingCommandList && g_vkRecordingFullStateList)
+  if (g_vkIsRecordingCommandList)
     g_vkRecordingHasStateChanges = true;
 }
 void C4JRender::StateSetLineWidth(float) {}
@@ -4579,17 +4566,17 @@ void C4JRender::StateSetWriteEnable(bool red, bool green, bool blue, bool alpha)
   if (alpha)
     mask |= VK_COLOR_COMPONENT_A_BIT;
   g_vkStateColorWriteMask = mask;
-  if (g_vkIsRecordingCommandList && g_vkRecordingFullStateList)
+  if (g_vkIsRecordingCommandList)
     g_vkRecordingHasStateChanges = true;
 }
 void C4JRender::StateSetDepthTestEnable(bool enable) {
   g_vkStateDepthTestEnable = enable;
-  if (g_vkIsRecordingCommandList && g_vkRecordingFullStateList)
+  if (g_vkIsRecordingCommandList)
     g_vkRecordingHasStateChanges = true;
 }
 void C4JRender::StateSetAlphaTestEnable(bool enable) {
   g_vkStateAlphaTestEnable = enable;
-  if (g_vkIsRecordingCommandList && g_vkRecordingFullStateList)
+  if (g_vkIsRecordingCommandList)
     g_vkRecordingHasAlphaStateChanges = true;
 }
 void C4JRender::StateSetDepthSlopeAndBias(float, float) {}
