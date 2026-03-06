@@ -858,7 +858,7 @@ HRESULT InitDevice()
 	vp.TopLeftY = 0;
 	g_pImmediateContext->RSSetViewports( 1, &vp );
 
-	RenderManager.Initialise(g_hWnd, width, height);
+	RenderManager.Initialise(g_pd3dDevice, g_pSwapChain);
 
 	return S_OK;
 }
@@ -1029,7 +1029,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 #endif
 	app.loadMediaArchive();
 
-	RenderManager.Initialise(g_hWnd, g_iScreenWidth, g_iScreenHeight);
+	RenderManager.Initialise(g_pd3dDevice, g_pSwapChain);
 
 	app.loadStringTable();
 	ui.init(g_pd3dDevice,g_pImmediateContext,g_pRenderTargetView,g_pDepthStencilView,g_iScreenWidth,g_iScreenHeight);
