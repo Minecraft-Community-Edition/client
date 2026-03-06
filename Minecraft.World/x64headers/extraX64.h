@@ -220,6 +220,7 @@ public:
 	bool m_isRemote;
 	bool m_isHostPlayer;
 	wchar_t m_gamertag[32];
+	int m_userIndex;
 private:
 	ULONG_PTR m_customData;
 };

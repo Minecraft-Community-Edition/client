@@ -293,8 +293,32 @@ int CPlatformNetworkManagerStub::GetLocalPlayerMask(int playerIndex)
 
 bool CPlatformNetworkManagerStub::AddLocalPlayerByUserIndex( int userIndex )
 {
-	NotifyPlayerJoined(m_pIQNet->GetLocalPlayerByUserIndex(userIndex));
-	return ( m_pIQNet->AddLocalPlayerByUserIndex(userIndex) == S_OK );
+#ifdef _WINDOWS64
+    if (userIndex > 0 && m_pIQNet->GetState() == QNET_STATE_GAME_PLAY)
+    {
+        // Assign splitscreen pads from the TOP of the m_player array downward.
+        // WinsockNetLayer assigns remote client smallIds upward from 1, so
+        // using the top slots avoids the collision that causes the LAN client
+        // to receive the splitscreen player's packets as its own.
+        BYTE splitSmallId = (BYTE)(MINECRAFT_NET_MAX_PLAYERS - userIndex);
+
+        IQNetPlayer *qp = &IQNet::m_player[splitSmallId];
+        qp->m_smallId      = splitSmallId;
+        qp->m_userIndex    = userIndex;   // preserve the real pad index for GetUserIndex()
+        qp->m_isRemote     = false;
+        qp->m_isHostPlayer = false;
+        wchar_t name[32];
+        swprintf_s(name, 32, L"%S", ProfileManager.GetGamertag(userIndex));
+        wcsncpy_s(qp->m_gamertag, 32, name, _TRUNCATE);
+        if (splitSmallId >= IQNet::s_playerCount)
+            IQNet::s_playerCount = splitSmallId + 1;
+
+        NotifyPlayerJoined(qp);
+        return ( m_pIQNet->AddLocalPlayerByUserIndex(userIndex) == S_OK );
+    }
+#endif
+    NotifyPlayerJoined(m_pIQNet->GetLocalPlayerByUserIndex(userIndex));
+    return ( m_pIQNet->AddLocalPlayerByUserIndex(userIndex) == S_OK );
 }
 
 bool CPlatformNetworkManagerStub::RemoveLocalPlayerByUserIndex( int userIndex )

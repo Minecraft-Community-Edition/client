@@ -1508,6 +1508,14 @@ void Minecraft::run_middle()
 						if(g_KBMInput.IsKeyPressed(KeyboardMouseInput::KEY_THIRD_PERSON))
 							localplayers[i]->ullButtonsPressed|=1LL<<MINECRAFT_ACTION_RENDER_THIRD_PERSON;
 
+						if (g_KBMInput.IsKeyPressed(VK_F3))
+						{
+							if (Minecraft::GetInstance()->options->renderDebug)
+								Minecraft::GetInstance()->options->renderDebug = true;
+							else
+								Minecraft::GetInstance()->options->renderDebug = false;
+						}
+
 						if(g_KBMInput.IsKeyPressed(KeyboardMouseInput::KEY_DEBUG_INFO))
 						{
 							localplayers[i]->ullButtonsPressed|=1LL<<MINECRAFT_ACTION_GAME_INFO;

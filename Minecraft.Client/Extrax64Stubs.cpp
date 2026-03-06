@@ -70,6 +70,8 @@ HRESULT    ATG::XMLParser::ParseXMLBuffer( CONST CHAR* strBuffer, UINT uBufferSi
 VOID ATG::XMLParser::RegisterSAXCallbackInterface( ISAXCallback *pISAXCallback ) {}
 #endif
 
+int m_userIndex = -1; // FOR SPLITSCREEN BULLSHIT
+
 #ifdef _WINDOWS64
 static char s_discordUsername[32] = "";
 static ULONGLONG s_discordXuid = 0;
@@ -463,7 +465,11 @@ bool IQNetPlayer::IsTalking() { return false; }
 bool IQNetPlayer::IsMutedByLocalUser(DWORD dwUserIndex) { return false; }
 bool IQNetPlayer::HasVoice() { return false; }
 bool IQNetPlayer::HasCamera() { return false; }
-int IQNetPlayer::GetUserIndex() { return this - &IQNet::m_player[0]; }
+int IQNetPlayer::GetUserIndex()
+{
+    if (m_userIndex >= 0) return m_userIndex;
+    return (int)(this - &IQNet::m_player[0]);
+}
 void IQNetPlayer::SetCustomDataValue(ULONG_PTR ulpCustomDataValue) {
 	m_customData = ulpCustomDataValue;
 }
@@ -567,6 +573,7 @@ void IQNet::ClientJoinGame()
 		m_player[i].m_isRemote = true;
 		m_player[i].m_isHostPlayer = false;
 		m_player[i].m_gamertag[0] = 0;
+		m_player[i].m_userIndex    = -1;
 		m_player[i].SetCustomDataValue(0);
 	}
 }
@@ -581,6 +588,7 @@ void IQNet::EndGame()
 		m_player[i].m_isRemote = false;
 		m_player[i].m_isHostPlayer = false;
 		m_player[i].m_gamertag[0] = 0;
+		m_player[i].m_userIndex    = -1;
 		m_player[i].SetCustomDataValue(0);
 	}
 }
@@ -827,7 +835,7 @@ void				C_4JProfile::SetTrialTextStringTable(CXuiStringTable *pStringTable,int i
 void				C_4JProfile::SetTrialAwardText(eAwardType AwardType,int iTitle,int iText) {}
 int					C_4JProfile::GetLockedProfile() { return 0; }
 void				C_4JProfile::SetLockedProfile(int iProf) {}
-bool				C_4JProfile::IsSignedIn(int iQuadrant) { return ( iQuadrant == 0); }
+bool				C_4JProfile::IsSignedIn(int iQuadrant) { return InputManager.IsPadConnected(iQuadrant); }
 bool				C_4JProfile::IsSignedInLive(int iProf) { return true; }
 bool				C_4JProfile::IsGuest(int iQuadrant) { return false; }
 UINT				C_4JProfile::RequestSignInUI(bool bFromInvite,bool bLocalGame,bool bNoGuestsAllowed,bool bMultiplayerSignIn,bool bAddUser, int( *Func)(LPVOID,const bool, const int iPad),LPVOID lpParam,int iQuadrant) { return 0; }
@@ -835,24 +843,35 @@ UINT				C_4JProfile::DisplayOfflineProfile(int( *Func)(LPVOID,const bool, const 
 UINT				C_4JProfile::RequestConvertOfflineToGuestUI(int( *Func)(LPVOID,const bool, const int iPad),LPVOID lpParam,int iQuadrant) { return 0; }
 void				C_4JProfile::SetPrimaryPlayerChanged(bool bVal) {}
 bool				C_4JProfile::QuerySigninStatus(void) { return true; }
-void				C_4JProfile::GetXUID(int iPad, PlayerUID *pXuid,bool bOnlineXuid)
+void C_4JProfile::GetXUID(int iPad, PlayerUID *pXuid, bool bOnlineXuid)
 {
-	if(pXuid == NULL)
-	{
-		return;
-	}
+    if(pXuid == NULL) return;
+
 #ifdef _WINDOWS64
-	if (iPad != 0)
-	{
-		*pXuid = INVALID_XUID;
-		return;
-	}
-	if (IQNet::s_isHosting)
-		*pXuid = 0xe000d45248242f2e;
-	else
-		*pXuid = 0xe000d45248242f2e + WinsockNetLayer::GetLocalSmallId();
+    if (iPad == 0)
+    {
+        if (IQNet::s_isHosting)
+            *pXuid = 0xe000d45248242f2e;
+        else
+            *pXuid = 0xe000d45248242f2e + WinsockNetLayer::GetLocalSmallId();
+        return;
+    }
+
+    // Splitscreen pads (1-3): generate a random XUID once and cache it.
+    // Using a random value avoids any collision with LAN players whose
+    // XUIDs are derived from small IDs or process IDs.
+    static PlayerUID s_splitscreenXuids[XUSER_MAX_COUNT] = {0};
+    if (s_splitscreenXuids[iPad] == 0)
+    {
+        // Use two rand() calls to fill 64 bits, seeded uniquely per pad
+        srand((unsigned int)(GetTickCount() ^ (iPad * 0x9e3779b9)));
+        s_splitscreenXuids[iPad] = 0xE100000000000000ULL
+            | ((PlayerUID)(unsigned int)rand() << 32)
+            | ((PlayerUID)(unsigned int)rand());
+    }
+    *pXuid = s_splitscreenXuids[iPad];
 #else
-	*pXuid = 0xe000d45248242f2e + iPad;
+    *pXuid = 0xe000d45248242f2e + iPad;
 #endif
 }
 BOOL				C_4JProfile::AreXUIDSEqual(PlayerUID xuid1,PlayerUID xuid2) { return xuid1 == xuid2; }
