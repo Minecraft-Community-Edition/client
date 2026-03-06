@@ -39,10 +39,6 @@ static thread_local MatrixStack g_matStacks[NUM_MATRIX_MODES];
 static thread_local int g_curMatrixMode = 0; // GL_MODELVIEW
 static thread_local bool g_matrixDirty = true;
 static thread_local bool g_matrixStacksInitialised = false;
-static thread_local float g_cachedMvp[16];
-static thread_local bool g_cachedMvpValid = false;
-static bool g_vkEnableDrawMerge = false;
-static bool g_vkEnableMvpCache = false;
 
 static void ensureThreadLocalMatrixStacksInitialised() {
   if (g_matrixStacksInitialised)
@@ -57,7 +53,6 @@ static void ensureThreadLocalMatrixStacksInitialised() {
   }
   g_curMatrixMode = 0;
   g_matrixDirty = true;
-  g_cachedMvpValid = false;
   g_matrixStacksInitialised = true;
 }
 
@@ -158,7 +153,6 @@ static VulkanTexture g_vkWhiteTexture = {};
 static bool g_vkWhiteTextureReady = false;
 
 struct VulkanQueuedDraw {
-  VkBuffer vertexBuffer;
   uint32_t firstVertex;
   uint32_t vertexCount;
   float mvp[16];
@@ -211,8 +205,6 @@ struct RecordedDrawCall {
   // Pre-expanded to BootstrapVertex layout (RGBA + triangle list) for fast replay.
   std::vector<uint8_t> preparedVertexData;
   uint32_t preparedVertexCount;
-  uint32_t gpuFirstVertex;
-  uint32_t gpuVertexCount;
   bool fullStateList;
   bool hasLocalModelMatrix;
   float localModelMatrix[16];
@@ -239,16 +231,6 @@ struct RecordedDrawCall {
 
 static std::unordered_map<int, std::shared_ptr<std::vector<RecordedDrawCall>>>
     g_vkCommandLists;
-struct VulkanCommandListGpuData {
-  VkBuffer vertexBuffer;
-  VkDeviceMemory vertexMemory;
-  uint8_t *mapped;
-  size_t capacityBytes;
-  size_t usedBytes;
-  bool hostCoherent;
-  bool uploadPending;
-};
-static std::unordered_map<int, VulkanCommandListGpuData> g_vkCommandListGpuData;
 static std::mutex g_vkCommandListsMutex;
 static thread_local bool g_vkIsRecordingCommandList = false;
 static thread_local int g_vkRecordingCommandListIndex = -1;
@@ -417,7 +399,6 @@ static void resetThreadLocalRenderState() {
   g_vkStateAlphaTestEnable = false;
   g_vkStateAlphaFunc = GL_ALWAYS;
   g_vkStateAlphaRef = 0.0f;
-  g_cachedMvpValid = false;
 }
 
 void VulkanSubmitIggyOverlayBGRA(int width, int height, const void *pixels,
@@ -954,16 +935,10 @@ static bool ensureTextureUploadedFromCache(VulkanTexture &tex) {
 static void processPendingTextureUploads() {
   if (!hasTextureUploadContext())
     return;
-  int uploadsThisFrame = 0;
-  const int kMaxUploadsPerFrame = 1;
   for (auto &kv : g_vkTextures) {
     VulkanTexture &tex = kv.second;
     if (tex.pendingUpload) {
       ensureTextureUploadedFromCache(tex);
-      ++uploadsThisFrame;
-      if (uploadsThisFrame >= kMaxUploadsPerFrame) {
-        break;
-      }
     }
   }
 }
@@ -1388,186 +1363,6 @@ static void destroyDynamicVertexBuffer() {
   g_vkDynamicVertexHostCoherent = true;
 }
 
-static void destroyCommandListGpuBuffer(VulkanCommandListGpuData &gpuData) {
-  if (g_vkDevice != VK_NULL_HANDLE) {
-    if (gpuData.vertexMemory != VK_NULL_HANDLE && gpuData.mapped != nullptr) {
-      vkUnmapMemory(g_vkDevice, gpuData.vertexMemory);
-    }
-    if (gpuData.vertexBuffer != VK_NULL_HANDLE) {
-      vkDestroyBuffer(g_vkDevice, gpuData.vertexBuffer, nullptr);
-    }
-    if (gpuData.vertexMemory != VK_NULL_HANDLE) {
-      vkFreeMemory(g_vkDevice, gpuData.vertexMemory, nullptr);
-    }
-  }
-  gpuData.vertexBuffer = VK_NULL_HANDLE;
-  gpuData.vertexMemory = VK_NULL_HANDLE;
-  gpuData.mapped = nullptr;
-  gpuData.capacityBytes = 0;
-  gpuData.usedBytes = 0;
-  gpuData.hostCoherent = true;
-  gpuData.uploadPending = false;
-}
-
-static void destroyAllCommandListGpuBuffers() {
-  for (auto &kv : g_vkCommandListGpuData) {
-    destroyCommandListGpuBuffer(kv.second);
-  }
-  g_vkCommandListGpuData.clear();
-}
-
-static bool ensureCommandListGpuBufferCapacity(VulkanCommandListGpuData &gpuData,
-                                               size_t minBytes) {
-  if (minBytes == 0)
-    return true;
-  if (g_vkDevice == VK_NULL_HANDLE)
-    return false;
-  if (gpuData.vertexBuffer != VK_NULL_HANDLE && gpuData.capacityBytes >= minBytes)
-    return true;
-
-  size_t newCapacity = 1u << 20; // 1MB default for chunk command lists.
-  if (newCapacity < minBytes)
-    newCapacity = minBytes;
-  if (gpuData.capacityBytes > 0 && newCapacity < gpuData.capacityBytes * 2) {
-    newCapacity = gpuData.capacityBytes * 2;
-    if (newCapacity < minBytes)
-      newCapacity = minBytes;
-  }
-
-  destroyCommandListGpuBuffer(gpuData);
-
-  VkBufferCreateInfo bufferCI = {};
-  bufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  bufferCI.size = static_cast<VkDeviceSize>(newCapacity);
-  bufferCI.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-  bufferCI.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  VkResult result =
-      vkCreateBuffer(g_vkDevice, &bufferCI, nullptr, &gpuData.vertexBuffer);
-  if (result != VK_SUCCESS || gpuData.vertexBuffer == VK_NULL_HANDLE) {
-    debugVkResult("Failed to create command-list vertex buffer", result);
-    destroyCommandListGpuBuffer(gpuData);
-    return false;
-  }
-
-  VkMemoryRequirements memReq = {};
-  vkGetBufferMemoryRequirements(g_vkDevice, gpuData.vertexBuffer, &memReq);
-
-  bool found = false;
-  uint32_t memoryTypeIndex = findMemoryTypeIndex(
-      memReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-      found);
-  gpuData.hostCoherent = true;
-  if (!found) {
-    memoryTypeIndex = findMemoryTypeIndex(
-        memReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, found);
-    gpuData.hostCoherent = false;
-  }
-  if (!found) {
-    debugVk("C4JRender_Vulkan: No host-visible memory for command-list buffer.\n");
-    destroyCommandListGpuBuffer(gpuData);
-    return false;
-  }
-
-  VkMemoryAllocateInfo allocInfo = {};
-  allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-  allocInfo.allocationSize = memReq.size;
-  allocInfo.memoryTypeIndex = memoryTypeIndex;
-  result = vkAllocateMemory(g_vkDevice, &allocInfo, nullptr, &gpuData.vertexMemory);
-  if (result != VK_SUCCESS || gpuData.vertexMemory == VK_NULL_HANDLE) {
-    debugVkResult("Failed to allocate command-list vertex memory", result);
-    destroyCommandListGpuBuffer(gpuData);
-    return false;
-  }
-
-  result =
-      vkBindBufferMemory(g_vkDevice, gpuData.vertexBuffer, gpuData.vertexMemory, 0);
-  if (result != VK_SUCCESS) {
-    debugVkResult("Failed to bind command-list vertex memory", result);
-    destroyCommandListGpuBuffer(gpuData);
-    return false;
-  }
-
-  void *mapped = nullptr;
-  result = vkMapMemory(g_vkDevice, gpuData.vertexMemory, 0, VK_WHOLE_SIZE, 0,
-                       &mapped);
-  if (result != VK_SUCCESS || mapped == nullptr) {
-    debugVkResult("Failed to map command-list vertex memory", result);
-    destroyCommandListGpuBuffer(gpuData);
-    return false;
-  }
-
-  gpuData.mapped = static_cast<uint8_t *>(mapped);
-  gpuData.capacityBytes = newCapacity;
-  gpuData.usedBytes = 0;
-  gpuData.uploadPending = false;
-  return true;
-}
-
-static bool uploadCommandListGpuData(
-    int index, const std::shared_ptr<std::vector<RecordedDrawCall>> &calls) {
-  if (!calls)
-    return false;
-  if (g_vkDevice == VK_NULL_HANDLE)
-    return false;
-
-  size_t totalBytes = 0;
-  for (RecordedDrawCall &call : *calls) {
-    call.gpuFirstVertex = 0;
-    call.gpuVertexCount = 0;
-    if (call.preparedVertexCount == 0 || call.preparedVertexData.empty())
-      continue;
-    totalBytes += call.preparedVertexData.size();
-  }
-
-  auto it = g_vkCommandListGpuData.find(index);
-  if (totalBytes == 0) {
-    if (it != g_vkCommandListGpuData.end()) {
-      destroyCommandListGpuBuffer(it->second);
-      g_vkCommandListGpuData.erase(it);
-    }
-    return true;
-  }
-
-  VulkanCommandListGpuData &gpuData = g_vkCommandListGpuData[index];
-  if (!ensureCommandListGpuBufferCapacity(gpuData, totalBytes))
-    return false;
-  if (gpuData.mapped == nullptr)
-    return false;
-
-  size_t offsetBytes = 0;
-  for (RecordedDrawCall &call : *calls) {
-    if (call.preparedVertexCount == 0 || call.preparedVertexData.empty())
-      continue;
-    const size_t bytes = call.preparedVertexData.size();
-    if (offsetBytes + bytes > gpuData.capacityBytes)
-      return false;
-    std::memcpy(gpuData.mapped + offsetBytes, call.preparedVertexData.data(),
-                bytes);
-    call.gpuFirstVertex =
-        static_cast<uint32_t>(offsetBytes / kVertexStridePF3TF2CB4NB4XW1);
-    call.gpuVertexCount = call.preparedVertexCount;
-    offsetBytes += bytes;
-  }
-
-  if (!gpuData.hostCoherent) {
-    VkMappedMemoryRange range = {};
-    range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-    range.memory = gpuData.vertexMemory;
-    range.offset = 0;
-    range.size = static_cast<VkDeviceSize>(offsetBytes);
-    VkResult result = vkFlushMappedMemoryRanges(g_vkDevice, 1, &range);
-    if (result != VK_SUCCESS) {
-      debugVkResult("Failed to flush command-list vertex memory", result);
-      return false;
-    }
-  }
-
-  gpuData.usedBytes = offsetBytes;
-  gpuData.uploadPending = false;
-  return true;
-}
-
 static bool ensureDynamicVertexBuffer(size_t minBytes) {
   if (minBytes == 0)
     return true;
@@ -1954,7 +1749,6 @@ static void destroyVulkanRuntime() {
   destroyAllTextures(true);
   destroySwapchainDrawResources();
   destroyDynamicVertexBuffer();
-  destroyAllCommandListGpuBuffers();
   destroyUiStagingBuffer();
   destroyUiImageResources();
 
@@ -2813,53 +2607,6 @@ static void appendOverlayText5x7(std::vector<BootstrapVertex> &verts,
   }
 }
 
-static bool canMergeQueuedDraw(const VulkanQueuedDraw &a,
-                               const VulkanQueuedDraw &b) {
-  if (a.vertexBuffer != b.vertexBuffer)
-    return false;
-  const uint64_t expectedFirst =
-      static_cast<uint64_t>(a.firstVertex) + static_cast<uint64_t>(a.vertexCount);
-  if (expectedFirst != static_cast<uint64_t>(b.firstVertex))
-    return false;
-  if (static_cast<uint64_t>(a.vertexCount) + static_cast<uint64_t>(b.vertexCount) >
-      0xffffffffull)
-    return false;
-  return a.depthTestEnable == b.depthTestEnable &&
-         a.depthWriteEnable == b.depthWriteEnable &&
-         a.depthCompareOp == b.depthCompareOp &&
-         a.blendEnable == b.blendEnable &&
-         a.srcBlendFactor == b.srcBlendFactor &&
-         a.dstBlendFactor == b.dstBlendFactor &&
-         a.colorWriteMask == b.colorWriteMask && a.cullEnable == b.cullEnable &&
-         a.cullClockwise == b.cullClockwise &&
-         a.descriptorSet == b.descriptorSet &&
-         a.alphaTestEnable == b.alphaTestEnable && a.alphaFunc == b.alphaFunc &&
-         a.alphaRef == b.alphaRef &&
-         std::memcmp(a.blendConstants, b.blendConstants,
-                     sizeof(a.blendConstants)) == 0 &&
-         std::memcmp(a.mvp, b.mvp, sizeof(a.mvp)) == 0;
-}
-
-static void appendQueuedDrawMerged(const VulkanQueuedDraw &draw) {
-  if (!g_vkEnableDrawMerge) {
-    g_vkQueuedDraws.push_back(draw);
-    return;
-  }
-
-  if (g_vkQueuedDraws.empty()) {
-    g_vkQueuedDraws.push_back(draw);
-    return;
-  }
-
-  VulkanQueuedDraw &last = g_vkQueuedDraws.back();
-  if (canMergeQueuedDraw(last, draw)) {
-    last.vertexCount += draw.vertexCount;
-    return;
-  }
-
-  appendQueuedDrawMerged(draw);
-}
-
 static void queueCornerOverlayText() {
   if (!g_vkShowCornerOverlay)
     return;
@@ -2949,7 +2696,6 @@ static void queueCornerOverlayText() {
   std::memcpy(g_vkFrameVertexData.data() + oldSize, verts.data(), addBytes);
 
   VulkanQueuedDraw draw = {};
-  draw.vertexBuffer = VK_NULL_HANDLE;
   draw.firstVertex =
       static_cast<uint32_t>(oldSize / kVertexStridePF3TF2CB4NB4XW1);
   draw.vertexCount = static_cast<uint32_t>(verts.size());
@@ -2968,7 +2714,7 @@ static void queueCornerOverlayText() {
   draw.blendConstants[1] = 1.0f;
   draw.blendConstants[2] = 1.0f;
   draw.blendConstants[3] = 1.0f;
-  appendQueuedDrawMerged(draw);
+  g_vkQueuedDraws.push_back(draw);
 }
 
 static void appendUiCompositeFullscreenQuad(uint32_t &firstVertexOut,
@@ -3118,24 +2864,6 @@ const float *C4JRender::MatrixGet(int type) {
 }
 
 void C4JRender::Set_matrixDirty() { g_matrixDirty = true; }
-
-static const float *getCurrentDrawMvp() {
-  ensureThreadLocalMatrixStacksInitialised();
-  if (!g_vkEnableMvpCache || !g_cachedMvpValid || g_matrixDirty) {
-    const float *modelView = RenderManager.MatrixGet(GL_MODELVIEW_MATRIX);
-    const float *projection = RenderManager.MatrixGet(GL_PROJECTION_MATRIX);
-    if (modelView != nullptr && projection != nullptr) {
-      mat4_multiply(g_cachedMvp, projection, modelView);
-    } else {
-      mat4_identity(g_cachedMvp);
-    }
-    g_cachedMvpValid = true;
-    if (g_vkEnableMvpCache) {
-      g_matrixDirty = false;
-    }
-  }
-  return g_cachedMvp;
-}
 
 // ============================================================================
 //  C4JRender - Core (Vulkan init and present)
@@ -3332,39 +3060,6 @@ void C4JRender::Initialise(HWND hWnd, int width, int height) {
   if (caps.maxImageCount > 0 && imageCount > caps.maxImageCount)
     imageCount = caps.maxImageCount;
 
-  VkPresentModeKHR chosenPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-  uint32_t presentModeCount = 0;
-  result = vkGetPhysicalDeviceSurfacePresentModesKHR(
-      g_vkPhysicalDevice, g_vkSurface, &presentModeCount, nullptr);
-  if (result == VK_SUCCESS && presentModeCount > 0) {
-    std::vector<VkPresentModeKHR> presentModes(presentModeCount);
-    result = vkGetPhysicalDeviceSurfacePresentModesKHR(
-        g_vkPhysicalDevice, g_vkSurface, &presentModeCount,
-        presentModes.data());
-    if (result == VK_SUCCESS) {
-      for (VkPresentModeKHR mode : presentModes) {
-        if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
-          chosenPresentMode = mode;
-          break;
-        }
-      }
-      if (chosenPresentMode == VK_PRESENT_MODE_FIFO_KHR) {
-        for (VkPresentModeKHR mode : presentModes) {
-          if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
-            chosenPresentMode = mode;
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  if (chosenPresentMode == VK_PRESENT_MODE_MAILBOX_KHR && imageCount < 3) {
-    imageCount = 3;
-    if (caps.maxImageCount > 0 && imageCount > caps.maxImageCount)
-      imageCount = caps.maxImageCount;
-  }
-
   VkSwapchainCreateInfoKHR scCI = {};
   scCI.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
   scCI.surface = g_vkSurface;
@@ -3394,19 +3089,8 @@ void C4JRender::Initialise(HWND hWnd, int width, int height) {
   } else {
     scCI.compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
   }
-  scCI.presentMode = chosenPresentMode;
+  scCI.presentMode = VK_PRESENT_MODE_FIFO_KHR;
   scCI.clipped = VK_TRUE;
-
-  const char *presentModeName = "FIFO";
-  if (chosenPresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-    presentModeName = "MAILBOX";
-  } else if (chosenPresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
-    presentModeName = "IMMEDIATE";
-  }
-  char presentModeLog[96];
-  std::snprintf(presentModeLog, sizeof(presentModeLog),
-                "C4JRender_Vulkan: Present mode %s\n", presentModeName);
-  debugVk(presentModeLog);
 
   result = vkCreateSwapchainKHR(g_vkDevice, &scCI, nullptr, &g_vkSwapchain);
   if (result != VK_SUCCESS) {
@@ -3804,24 +3488,14 @@ void C4JRender::Present() {
   vkCmdBeginRenderPass(g_vkCommandBuffer, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
 
   if (!g_vkQueuedDraws.empty()) {
-    VkBuffer boundVertexBuffer = VK_NULL_HANDLE;
+    VkBuffer vertexBuffers[] = {g_vkDynamicVertexBuffer};
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(g_vkCommandBuffer, 0, 1, vertexBuffers, offsets);
+
     VkPipeline boundPipeline = VK_NULL_HANDLE;
     VkDescriptorSet boundDescriptorSet = VK_NULL_HANDLE;
     float lastBlendConstants[4] = {-1.0f, -1.0f, -1.0f, -1.0f};
     for (const VulkanQueuedDraw &draw : g_vkQueuedDraws) {
-      const VkBuffer drawVertexBuffer =
-          (draw.vertexBuffer != VK_NULL_HANDLE) ? draw.vertexBuffer
-                                                : g_vkDynamicVertexBuffer;
-      if (drawVertexBuffer == VK_NULL_HANDLE) {
-        continue;
-      }
-      if (drawVertexBuffer != boundVertexBuffer) {
-        VkBuffer vertexBuffers[] = {drawVertexBuffer};
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(g_vkCommandBuffer, 0, 1, vertexBuffers, offsets);
-        boundVertexBuffer = drawVertexBuffer;
-      }
-
       VkPipeline pipeline = getOrCreateTrianglePipeline(
           draw.depthTestEnable, draw.depthWriteEnable, draw.depthCompareOp,
           draw.blendEnable, draw.srcBlendFactor, draw.dstBlendFactor,
@@ -4127,7 +3801,6 @@ static void queuePreparedExpandedDrawWithMvp(const uint8_t *vertexBytes,
   std::memcpy(g_vkFrameVertexData.data() + oldSize, vertexBytes, addBytes);
 
   VulkanQueuedDraw draw = {};
-  draw.vertexBuffer = VK_NULL_HANDLE;
   draw.firstVertex = static_cast<uint32_t>(firstVertex);
   draw.vertexCount = vertexCount;
   draw.depthTestEnable = g_vkStateDepthTestEnable;
@@ -4151,42 +3824,7 @@ static void queuePreparedExpandedDrawWithMvp(const uint8_t *vertexBytes,
     mat4_identity(draw.mvp);
   }
 
-  appendQueuedDrawMerged(draw);
-}
-
-static void queuePreparedExpandedDrawFromBufferWithMvp(VkBuffer vertexBuffer,
-                                                       uint32_t firstVertex,
-                                                       uint32_t vertexCount,
-                                                       const float *mvp) {
-  if (!g_vkInitialized || vertexBuffer == VK_NULL_HANDLE || vertexCount == 0)
-    return;
-
-  VulkanQueuedDraw draw = {};
-  draw.vertexBuffer = vertexBuffer;
-  draw.firstVertex = firstVertex;
-  draw.vertexCount = vertexCount;
-  draw.depthTestEnable = g_vkStateDepthTestEnable;
-  draw.depthWriteEnable = g_vkStateDepthWriteEnable;
-  draw.depthCompareOp = g_vkStateDepthCompareOp;
-  draw.blendEnable = g_vkStateBlendEnable;
-  draw.srcBlendFactor = g_vkStateSrcBlendFactor;
-  draw.dstBlendFactor = g_vkStateDstBlendFactor;
-  draw.colorWriteMask = g_vkStateColorWriteMask;
-  draw.cullEnable = g_vkStateCullEnable;
-  draw.cullClockwise = g_vkStateCullClockwise;
-  std::memcpy(draw.blendConstants, g_vkStateBlendConstants,
-              sizeof(draw.blendConstants));
-  draw.descriptorSet = resolveTextureDescriptorSet(g_vkStateTextureId);
-  draw.alphaTestEnable = g_vkStateAlphaTestEnable;
-  draw.alphaFunc = g_vkStateAlphaFunc;
-  draw.alphaRef = g_vkStateAlphaRef;
-  if (mvp != nullptr) {
-    std::memcpy(draw.mvp, mvp, sizeof(draw.mvp));
-  } else {
-    mat4_identity(draw.mvp);
-  }
-
-  appendQueuedDrawMerged(draw);
+  g_vkQueuedDraws.push_back(draw);
 }
 
 void C4JRender::DrawVertices(ePrimitiveType primitiveType, int count,
@@ -4270,7 +3908,6 @@ void C4JRender::DrawVertices(ePrimitiveType primitiveType, int count,
     return;
 
   VulkanQueuedDraw draw = {};
-  draw.vertexBuffer = VK_NULL_HANDLE;
   draw.firstVertex = static_cast<uint32_t>(firstVertex);
   draw.vertexCount = outVertexCount;
   draw.depthTestEnable = g_vkStateDepthTestEnable;
@@ -4289,24 +3926,15 @@ void C4JRender::DrawVertices(ePrimitiveType primitiveType, int count,
   draw.alphaFunc = g_vkStateAlphaFunc;
   draw.alphaRef = g_vkStateAlphaRef;
 
-  if (g_vkEnableMvpCache) {
-    const float *mvp = getCurrentDrawMvp();
-    if (mvp != nullptr) {
-      std::memcpy(draw.mvp, mvp, sizeof(draw.mvp));
-    } else {
-      mat4_identity(draw.mvp);
-    }
+  const float *modelView = MatrixGet(GL_MODELVIEW_MATRIX);
+  const float *projection = MatrixGet(GL_PROJECTION_MATRIX);
+  if (modelView != nullptr && projection != nullptr) {
+    mat4_multiply(draw.mvp, projection, modelView);
   } else {
-    const float *modelView = MatrixGet(GL_MODELVIEW_MATRIX);
-    const float *projection = MatrixGet(GL_PROJECTION_MATRIX);
-    if (modelView != nullptr && projection != nullptr) {
-      mat4_multiply(draw.mvp, projection, modelView);
-    } else {
-      mat4_identity(draw.mvp);
-    }
+    mat4_identity(draw.mvp);
   }
 
-  appendQueuedDrawMerged(draw);
+  g_vkQueuedDraws.push_back(draw);
 }
 void C4JRender::DrawVertexBuffer(ePrimitiveType, int, void *, eVertexType,
                                  ePixelShaderType) {}
@@ -4332,13 +3960,7 @@ void C4JRender::CBuffDelete(int first, int count) {
   {
     std::lock_guard<std::mutex> commandListsLock(g_vkCommandListsMutex);
     for (int i = 0; i < count; ++i) {
-      const int index = first + i;
-      g_vkCommandLists.erase(index);
-      auto gpuIt = g_vkCommandListGpuData.find(index);
-      if (gpuIt != g_vkCommandListGpuData.end()) {
-        gpuIt->second.usedBytes = 0;
-        gpuIt->second.uploadPending = false;
-      }
+      g_vkCommandLists.erase(first + i);
     }
   }
   if (g_vkIsRecordingCommandList &&
@@ -4383,11 +4005,6 @@ void C4JRender::CBuffStart(int index, bool full) {
 void C4JRender::CBuffClear(int index) {
   std::lock_guard<std::mutex> commandListsLock(g_vkCommandListsMutex);
   g_vkCommandLists[index] = std::make_shared<std::vector<RecordedDrawCall>>();
-  auto gpuIt = g_vkCommandListGpuData.find(index);
-  if (gpuIt != g_vkCommandListGpuData.end()) {
-    gpuIt->second.usedBytes = 0;
-    gpuIt->second.uploadPending = false;
-  }
 }
 int C4JRender::CBuffSize(int index) {
   // old renderers used this as allocator pressure.
@@ -4409,12 +4026,9 @@ int C4JRender::CBuffSize(int index) {
 void C4JRender::CBuffEnd() {
   if (g_vkIsRecordingCommandList && g_vkRecordingCommandListIndex >= 0) {
     std::lock_guard<std::mutex> commandListsLock(g_vkCommandListsMutex);
-    std::shared_ptr<std::vector<RecordedDrawCall>> newCalls =
+    g_vkCommandLists[g_vkRecordingCommandListIndex] =
         std::make_shared<std::vector<RecordedDrawCall>>(
             std::move(g_vkRecordingScratch));
-    g_vkCommandLists[g_vkRecordingCommandListIndex] =
-        newCalls;
-    g_vkCommandListGpuData[g_vkRecordingCommandListIndex].uploadPending = true;
     g_vkRecordingScratch.clear();
   } else {
     g_vkRecordingScratch.clear();
@@ -4429,45 +4043,15 @@ void C4JRender::CBuffEnd() {
 }
 bool C4JRender::CBuffCall(int index, bool) {
   std::shared_ptr<std::vector<RecordedDrawCall>> calls;
-  VkBuffer commandListVertexBuffer = VK_NULL_HANDLE;
   {
     std::lock_guard<std::mutex> commandListsLock(g_vkCommandListsMutex);
     auto it = g_vkCommandLists.find(index);
     if (it == g_vkCommandLists.end())
       return false;
     calls = it->second;
-    auto gpuIt = g_vkCommandListGpuData.find(index);
-    if (gpuIt != g_vkCommandListGpuData.end() &&
-        !gpuIt->second.uploadPending &&
-        gpuIt->second.vertexBuffer != VK_NULL_HANDLE &&
-        gpuIt->second.usedBytes > 0) {
-      commandListVertexBuffer = gpuIt->second.vertexBuffer;
-    }
   }
   if (!calls)
     return false;
-
-  if (commandListVertexBuffer == VK_NULL_HANDLE && g_vkDevice != VK_NULL_HANDLE) {
-    std::lock_guard<std::mutex> commandListsLock(g_vkCommandListsMutex);
-    auto it = g_vkCommandLists.find(index);
-    if (it != g_vkCommandLists.end() && it->second) {
-      auto &gpuData = g_vkCommandListGpuData[index];
-      if (gpuData.uploadPending || gpuData.vertexBuffer == VK_NULL_HANDLE ||
-          gpuData.usedBytes == 0) {
-        if (uploadCommandListGpuData(index, it->second)) {
-          auto gpuIt = g_vkCommandListGpuData.find(index);
-          if (gpuIt != g_vkCommandListGpuData.end() &&
-              !gpuIt->second.uploadPending &&
-              gpuIt->second.vertexBuffer != VK_NULL_HANDLE &&
-              gpuIt->second.usedBytes > 0) {
-            commandListVertexBuffer = gpuIt->second.vertexBuffer;
-          }
-        }
-      } else {
-        commandListVertexBuffer = gpuData.vertexBuffer;
-      }
-    }
-  }
 
   ensureThreadLocalMatrixStacksInitialised();
   float callSiteModelView[16];
@@ -4548,21 +4132,14 @@ bool C4JRender::CBuffCall(int index, bool) {
       } else {
         mat4_multiply(drawMvp, callSiteProjection, callSiteModelView);
       }
-      if (commandListVertexBuffer != VK_NULL_HANDLE && call.gpuVertexCount > 0) {
-        queuePreparedExpandedDrawFromBufferWithMvp(
-            commandListVertexBuffer, call.gpuFirstVertex, call.gpuVertexCount,
-            drawMvp);
-      } else {
-        queuePreparedExpandedDrawWithMvp(call.preparedVertexData.data(),
-                                         call.preparedVertexCount, drawMvp);
-      }
+      queuePreparedExpandedDrawWithMvp(call.preparedVertexData.data(),
+                                       call.preparedVertexCount, drawMvp);
     } else {
       if (call.hasLocalModelMatrix) {
         float combinedModelView[16];
         mat4_multiply(combinedModelView, callSiteModelView, call.localModelMatrix);
         std::memcpy(g_matStacks[GL_MODELVIEW].stack[g_matStacks[GL_MODELVIEW].top],
                     combinedModelView, sizeof(combinedModelView));
-        g_matrixDirty = true;
       }
       DrawVertices(call.primitiveType, call.count,
                    const_cast<uint8_t *>(call.vertexData.data()), call.vType,
@@ -4570,7 +4147,6 @@ bool C4JRender::CBuffCall(int index, bool) {
       if (call.hasLocalModelMatrix) {
         std::memcpy(g_matStacks[GL_MODELVIEW].stack[g_matStacks[GL_MODELVIEW].top],
                     callSiteModelView, sizeof(callSiteModelView));
-        g_matrixDirty = true;
       }
     }
   }
