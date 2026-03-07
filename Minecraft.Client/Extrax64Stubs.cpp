@@ -82,6 +82,7 @@ static IDiscordActivityEvents s_ActivityEvents;
 
 void TickDiscord()
 {
+	return;
 	if(discordCore != NULL)
 		discordCore->run_callbacks(discordCore);
 }
@@ -94,6 +95,7 @@ static bool s_hasPendingJoin = false;
 
 static void OnActivityJoin(void* event_data, const char* join_secret)
 {
+	return;
 	printf("Discord OnActivityJoin: secret=%s\n", join_secret);
 
     char secret[64];
@@ -127,6 +129,7 @@ info.displayLabelLength = (unsigned char)labelLen;
 
 static void OnActivityInvite(void* event_data, enum EDiscordActivityActionType type, struct DiscordUser* user, struct DiscordActivity* activity)
 {
+	return;
 	printf("Discord OnActivityInvite from user: %s\n", user->username);
 
 	struct IDiscordActivityManager* am = discordCore->get_activity_manager(discordCore);
@@ -143,6 +146,7 @@ static void OnActivityInvite(void* event_data, enum EDiscordActivityActionType t
 
 static void OnActivityJoinRequest(void* event_data, struct DiscordUser* user)
 {
+	return;
 	printf("Discord join request from: %s\n", user->username);
 
 	struct IDiscordActivityManager* am = discordCore->get_activity_manager(discordCore);
@@ -154,6 +158,7 @@ static void OnActivityJoinRequest(void* event_data, struct DiscordUser* user)
 
 void Discord_SetJoinSecret(const char* hostIp, WORD port)
 {
+	return;
 	printf("Discord_SetJoinSecret called!\n");
 	sprintf_s(s_DiscordJoinSecret, sizeof(s_DiscordJoinSecret), "%s:%u", hostIp, (unsigned)port);
 
@@ -163,6 +168,7 @@ void Discord_SetJoinSecret(const char* hostIp, WORD port)
 
 static void InitDiscordCore()
 {
+	return;
 	if(discordCore != NULL) return; // already done
 
 	static IDiscordCoreEvents coreEvents;
@@ -202,6 +208,7 @@ static ULONGLONG DiscordIdToXuid(DiscordSnowflake discordId)
 
 static void InitDiscordIdentity()
 {
+	return;
 	InitDiscordCore();
 	if(discordCore == NULL) return;
 
@@ -384,10 +391,10 @@ namespace
 
 #ifdef _WINDOWS64
 		// Try to get Discord identity first
-		if(s_discordXuid == 0)
-		{
-			InitDiscordIdentity();
-		}
+		//if(s_discordXuid == 0)
+		//{
+		//	InitDiscordIdentity();
+		//}
 #endif
 
 		DWORD pid = 1;
@@ -451,13 +458,15 @@ PlayerUID IQNetPlayer::GetXuid()
 {
 	// For the local player (smallId 0 on host, or the assigned smallId on client),
 	// try Discord XUID first for richer identity
-	if (!m_isRemote)
-	{
-		EnsureStubIdentity();
-		if (s_discordXuid != 0)
-			return s_discordXuid | 0x100000000ULL;
-	}
-	return (PlayerUID)(0xe000d45248242f2e + m_smallId);
+/*
+	*	if (!m_isRemote)
+		{
+			EnsureStubIdentity();
+			if (s_discordXuid != 0)
+				return s_discordXuid | 0x100000000ULL;
+		}
+		return (PlayerUID)(0xe000d45248242f2e + m_smallId);
+		*/
 }
 LPCWSTR IQNetPlayer::GetGamertag() { return m_gamertag; }
 int IQNetPlayer::GetSessionIndex() { return m_smallId; }
@@ -938,11 +947,11 @@ void				*C_4JProfile::GetGameDefinedProfileData(int iQuadrant)
 void				C_4JProfile::ResetProfileProcessState() {}
 void				C_4JProfile::Tick( void ) {
 #ifdef _WINDOWS64
-	printf("Tick called, discordCore=%p\n", (void*)discordCore);
-	if(discordCore != NULL)
-	{
-		discordCore->run_callbacks(discordCore);
-	}
+	//printf("Tick called, discordCore=%p\n", (void*)discordCore);
+	//if(discordCore != NULL)
+	//{
+	//	discordCore->run_callbacks(discordCore);
+	//}
 #endif
 }
 void				C_4JProfile::RegisterAward(int iAwardNumber,int iGamerconfigID, eAwardType eType, bool bLeaderboardAffected, 
@@ -961,7 +970,8 @@ static DiscordTimestamp s_sessionStart = 0;
 void				C_4JProfile::SetCurrentGameActivity(int iPad,int iNewPresence, bool bSetOthersToIdle) 
 {
 #ifdef _WINDOWS64
-	printf("SetCurrentGameActivity, iPad: %d iNewPrescene: %d, bSetOthersToIdle: %d\n", iPad, iNewPresence, bSetOthersToIdle);
+	/*
+	*printf("SetCurrentGameActivity, iPad: %d iNewPrescene: %d, bSetOthersToIdle: %d\n", iPad, iNewPresence, bSetOthersToIdle);
 
 	InitDiscordCore();
 	if(discordCore == NULL) return;
@@ -1017,7 +1027,7 @@ void				C_4JProfile::SetCurrentGameActivity(int iPad,int iNewPresence, bool bSet
 	activityManager->update_activity(activityManager, &activity, &s_dummy,
 		[](void *data, enum EDiscordResult result) {
 			printf("update_activity result: %d\n", result);
-	});
+	})*/
 #endif
 }
 void				C_4JProfile::DisplayFullVersionPurchase(bool bRequired, int iQuadrant, int iUpsellParam) {}

@@ -11,6 +11,7 @@ namespace discord {
 
 Result Core::Create(ClientId clientId, std::uint64_t flags, Core** instance)
 {
+    return;
     if (!instance) {
         return Result::InternalError;
     }

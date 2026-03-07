@@ -225,6 +225,7 @@ static bool TryUPnP(int port, char* externalIPOut)
 
 bool WinsockNetLayer::HostGame(int port)
 {
+	return false;
 	if (!s_initialized && !Initialize()) return false;
 
 	s_isHost = true;
@@ -318,7 +319,7 @@ bool WinsockNetLayer::HostGame(int port)
 			}
 		}
 	}
-	Discord_SetJoinSecret(joinIp, port);
+	// Discord_SetJoinSecret(joinIp, port);
 
 	return true;
 }
