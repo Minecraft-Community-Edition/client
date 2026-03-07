@@ -8,6 +8,7 @@ protected:
 	wstring message;
 private:
 	int frame;
+	unsigned int caretPos;
 
 public:
 	ChatScreen();	//4J added

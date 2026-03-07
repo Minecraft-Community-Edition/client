@@ -23,6 +23,7 @@ public:
 
 	Screen();		// 4J added
     virtual void render(int xm, int ym, float a);
+    void injectKeyPressed(wchar_t eventCharacter, int eventKey);
 protected:
 	virtual void keyPressed(wchar_t eventCharacter, int eventKey);
 public:

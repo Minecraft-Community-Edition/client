@@ -906,13 +906,9 @@ void Gui::render(float a, bool mouseFree, int xMouse, int yMouse)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDisable(GL_ALPHA_TEST);
 
-// 4J Stu - We have moved the chat text to a xui
-#if 0
     glPushMatrix();
-	// 4J-PB we need to move this up a bit because we've moved the quick select
-	//glTranslatef(0, ((float)screenHeight) - 48, 0);
-    glTranslatef(0.0f, (float)(screenHeight - iSafezoneYHalf - iTooltipsYOffset - 16 - 3 + 22) - 24.0f, 0.0f);
-    // glScalef(1.0f / ssc.scale, 1.0f / ssc.scale, 1);
+	// Position chat messages just above the armor/health bar row (40px above toolbar top)
+    glTranslatef(0.0f, (float)(screenHeight - iSafezoneYHalf - iTooltipsYOffset) - 40.0f, 0.0f);
 
 	// 4J-PB - we need gui messages for each of the possible 4 splitscreen players
 	if(bDisplayGui)
@@ -951,7 +947,6 @@ void Gui::render(float a, bool mouseFree, int xMouse, int yMouse)
 		}
 	}
     glPopMatrix();
-#endif
 
 	// 4J Stu - Copied over but not used
 #if 0
