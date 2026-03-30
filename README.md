@@ -1,8 +1,5 @@
-# this fork is in a transition stage!
-## We will not be using this current code, and are waiting for a new fork (nano-lce) to release/finish up, it may take awhile, but it will be worth it.
-the new nano-lce fork will dramatically reduce file sizes, allowing even more devices to use the fork. 
-for reference right now the full nano-lce project is about 50-100mb. but it is not finished. 
-so again, it will take awhile before the new fork begins, so continue with another one of the amazing forks down below (credits section)
+# this fork is dead!
+
 
 ## This project is very early, and not the entire product.
 
