@@ -656,25 +656,16 @@ void UIScene_HUD::handleTimerComplete(int id)
 	if(pMinecraft->localplayers[m_iPad]!= NULL)
 	{
 		Gui *pGui = pMinecraft->gui;
-		//DWORD messagesToDisplay = min( CHAT_LINES_COUNT, pGui->getMessagesCount(m_iPad) );
+
+		// Chat messages are now rendered exclusively by Gui::render() (OpenGL path).
+		// Disable the Iggy/flash chat labels in the HUD scene to avoid duplicate rendering.
 		for( unsigned int i = 0; i < CHAT_LINES_COUNT; ++i )
 		{
-			float opacity = pGui->getOpacity(m_iPad, i);
-			if( opacity > 0 )
-			{
-				m_controlLabelBackground[i].setOpacity(opacity);
-				m_labelChatText[i].setOpacity(opacity);
-				m_labelChatText[i].setLabel( pGui->getMessagesCount(m_iPad) ? pGui->getMessage(m_iPad,i) : L"" );
-
-				anyVisible = true;
-			}
-			else
-			{
-				m_controlLabelBackground[i].setOpacity(0);
-				m_labelChatText[i].setOpacity(0);
-				m_labelChatText[i].setLabel(L"");
-			}
+			m_controlLabelBackground[i].setOpacity(0);
+			m_labelChatText[i].setOpacity(0);
+			m_labelChatText[i].setLabel(L"");
 		}
+
 		if(pGui->getJukeboxOpacity(m_iPad) > 0) anyVisible = true;
 		m_labelJukebox.setOpacity( pGui->getJukeboxOpacity(m_iPad) );
 		m_labelJukebox.setLabel( pGui->getJukeboxMessage(m_iPad) );

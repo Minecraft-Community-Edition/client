@@ -29,6 +29,11 @@ void Screen::render(int xm, int ym, float a)
     }
 }
 
+void Screen::injectKeyPressed(wchar_t eventCharacter, int eventKey)
+{
+    keyPressed(eventCharacter, eventKey);
+}
+
 void Screen::keyPressed(wchar_t eventCharacter, int eventKey)
 {
 	if (eventKey == Keyboard::KEY_ESCAPE)

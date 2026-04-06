@@ -1598,6 +1598,12 @@ void ClientConnection::handleChat(shared_ptr<ChatPacket> packet)
 		message = replaceAll(message,L"{*PLAYER*}",playerDisplayName);
 		break;
 
+	case ChatPacket::e_ChatCustom:
+		// Raw text message (e.g. "<Player> message") — use first string arg directly
+		if (!packet->m_stringArgs.empty())
+			message = packet->m_stringArgs[0];
+		break;
+
 	default:
 		message = playerDisplayName;
 		break;

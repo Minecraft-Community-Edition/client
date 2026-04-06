@@ -25,6 +25,7 @@
 #include "..\..\Minecraft.World\ThreadName.h"
 #include "..\..\Minecraft.Client\StatsCounter.h"
 #include "..\ConnectScreen.h"
+#include "..\Screen.h"
 //#include "Social\SocialManager.h"
 //#include "Leaderboards\LeaderboardManager.h"
 //#include "XUI\XUI_Scene_Container.h"
@@ -301,6 +302,19 @@ HWND GetMinecraftWindowHWND()
 	return g_hWnd;
 }
 
+static int KeyboardConstFromVK(int vk)
+{
+	for (int keyConst = Keyboard::KEY_A; keyConst <= Keyboard::KEY_RIGHT; ++keyConst)
+	{
+		if (Keyboard::toVK(keyConst) == vk)
+		{
+			return keyConst;
+		}
+	}
+
+	return -1;
+}
+
 static bool g_isFullscreen = false;
 static RECT g_windowedRect = {};
 static LONG g_windowedStyle = 0;
@@ -571,6 +585,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			vk = (lParam & (1 << 24)) ? VK_RCONTROL : VK_LCONTROL;
 		else if (vk == VK_MENU)
 			vk = (lParam & (1 << 24)) ? VK_RMENU : VK_LMENU;
+		Minecraft *pMinecraft = Minecraft::GetInstance();
+		if (pMinecraft != NULL && pMinecraft->screen != NULL)
+		{
+			int keyConst = KeyboardConstFromVK(vk);
+			if (keyConst >= 0)
+			{
+				if (vk == VK_ESCAPE || vk == VK_BACK || vk == VK_UP || vk == VK_DOWN || vk == VK_LEFT || vk == VK_RIGHT || vk == VK_TAB)
+				{
+					pMinecraft->screen->injectKeyPressed(0, keyConst);
+					return 0;
+				}
+			}
+		}
+
 		g_KBMInput.OnKeyDown(vk);
 		break;
 	}
@@ -585,6 +613,29 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		else if (vk == VK_MENU)
 			vk = (lParam & (1 << 24)) ? VK_RMENU : VK_LMENU;
 		g_KBMInput.OnKeyUp(vk);
+		break;
+	}
+
+	case WM_CHAR:
+	{
+		Minecraft *pMinecraft = Minecraft::GetInstance();
+		if (pMinecraft != NULL && pMinecraft->screen != NULL)
+		{
+			wchar_t eventCharacter = (wchar_t)wParam;
+			int eventKey = 0;
+
+			if (wParam == VK_BACK)
+			{
+				return 0;
+			}
+			else if (wParam == VK_RETURN)
+			{
+				eventKey = Keyboard::KEY_RETURN;
+			}
+
+			pMinecraft->screen->injectKeyPressed(eventCharacter, eventKey);
+			return 0;
+		}
 		break;
 	}
 

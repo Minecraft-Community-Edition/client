@@ -3598,10 +3598,13 @@ void Minecraft::tick(bool bFirst, bool bUpdateTextures)
 	// #endif
 
 	
-	if(Keyboard::isKeyDown(options->keyChat->key))
+	static bool s_chatKeyWasDown = false;
+	bool chatKeyDown = Keyboard::isKeyDown(options->keyChat->key) || g_KBMInput.IsKeyDown('T');
+	if (screen == NULL && chatKeyDown && !s_chatKeyWasDown)
 	{
 		setScreen(new ChatScreen());
 	}
+	s_chatKeyWasDown = chatKeyDown;
 
 #if 0
 	// 4J - TODO - some replacement for input handling...

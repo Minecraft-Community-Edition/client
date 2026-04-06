@@ -9,6 +9,7 @@ const wstring ChatScreen::allowedChars = SharedConstants::acceptableLetters;
 ChatScreen::ChatScreen()
 {
 	frame = 0;
+    caretPos = 0;
 }
 
 void ChatScreen::init()
@@ -47,18 +48,46 @@ void ChatScreen::keyPressed(wchar_t ch, int eventKey)
         minecraft->setScreen(NULL);
         return;
     }
-    if (eventKey == Keyboard::KEY_BACK && message.length() > 0) message = message.substr(0, message.length() - 1);
-    if (allowedChars.find(ch) >= 0 && message.length() < SharedConstants::maxChatLength)
+    if (eventKey == Keyboard::KEY_LEFT)
+    {
+        if (caretPos > 0)
+        {
+            caretPos--;
+        }
+        return;
+    }
+    if (eventKey == Keyboard::KEY_RIGHT)
+    {
+        if (caretPos < message.length())
+        {
+            caretPos++;
+        }
+        return;
+    }
+    if (eventKey == Keyboard::KEY_BACK && caretPos > 0 && message.length() > 0)
+    {
+        message.erase(caretPos - 1, 1);
+        caretPos--;
+        return;
+    }
+    if (ch >= 32 && SharedConstants::acceptableLetters.find(ch) != wstring::npos && message.length() < SharedConstants::maxChatLength)
 	{
-        message += ch;
+        message.insert(caretPos, 1, ch);
+        caretPos++;
     }
 
 }
 
 void ChatScreen::render(int xm, int ym, float a)
 {
+    wstring displayMessage = L"> " + message;
+    if (frame / 6 % 2 == 0)
+    {
+        displayMessage.insert(2 + caretPos, 1, L'_');
+    }
+
     fill(2, height - 14, width - 2, height - 2, 0x80000000);
-    drawString(font, L"> " + message + (frame / 6 % 2 == 0 ? L"_" : L""), 4, height - 12, 0xe0e0e0);
+    drawString(font, displayMessage, 4, height - 12, 0xe0e0e0);
 
     Screen::render(xm, ym, a);
 }
@@ -69,15 +98,21 @@ void ChatScreen::mouseClicked(int x, int y, int buttonNum)
 	{
         if (minecraft->gui->selectedName != L"")	// 4J - was NULL comparison
 		{
-			if (message.length() > 0 && message[message.length()-1]!=L' ')
+            if (caretPos > 0 && message[caretPos - 1] != L' ')
 			{
-                message += L" ";
+                message.insert(caretPos, 1, L' ');
+                caretPos++;
             }
-            message += minecraft->gui->selectedName;
+            message.insert(caretPos, minecraft->gui->selectedName);
+            caretPos += (unsigned int)minecraft->gui->selectedName.length();
             unsigned int maxLength = SharedConstants::maxChatLength;
             if (message.length() > maxLength)
 			{
                 message = message.substr(0, maxLength);
+                if (caretPos > message.length())
+                {
+                    caretPos = (unsigned int)message.length();
+                }
             }
         }
 		else
